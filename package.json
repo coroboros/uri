@@ -35,6 +35,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "bench": "pnpm build && node bench/uri.bench.mjs",
     "prepublishOnly": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
   },
   "keywords": [
@@ -78,6 +79,7 @@
     "@types/node": "^22.0.0",
     "@vitest/coverage-v8": "^4.1.6",
     "fast-check": "^4.8.0",
+    "mitata": "^1.0.34",
     "tsdown": "^0.22.0",
     "typescript": "^6.0.3",
     "vitest": "^4.1.6"
