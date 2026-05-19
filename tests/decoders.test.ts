@@ -1218,6 +1218,14 @@ describe('#decoders', () => {
       );
     });
 
+    // sitemaps.org: decoding inverts all five XML entities — &amp; &apos;
+    // &quot; &gt; &lt; — round-tripping encodeSitemapURL.
+    it('should decode all five sitemap XML entities (sitemaps.org)', () => {
+      expect(decodeSitemapURL('http://example.com/a&amp;b&apos;c&quot;d&lt;e&gt;f')).toBe(
+        'http://example.com/a&b\'c"d<e>f',
+      );
+    });
+
     it('should throw an uri error if url is more than the maximal allowed length', () => {
       expectThrowWithCode(
         () =>

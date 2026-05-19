@@ -219,7 +219,8 @@ const encodeURIString = function encodeURIString(
     fragment: fragmentEncoded,
   });
 
-  if (webURL && uriencoded.length > maxLengthURL) {
+  // sitemaps.org: a URL must be strictly less than 2,048 characters
+  if (webURL && uriencoded.length >= maxLengthURL) {
     const error = new URIError(
       `max URL length of ${maxLengthURL} reached: ${uriencoded.length}`,
     ) as URIError & { code: string };

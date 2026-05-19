@@ -2285,6 +2285,16 @@ describe('#checkers', () => {
       );
     });
 
+    // sitemaps.org: a URL must be strictly less than 2,048 characters, so
+    // maxLengthURL (2048) is an exclusive bound — exactly 2048 is rejected.
+    it('should reject a URL of exactly maxLengthURL and accept maxLengthURL - 1', () => {
+      const base = 'http://example.com/';
+      const url = (len: number) => base + 'a'.repeat(len - base.length);
+
+      expectThrowWithCode(() => checkHttpURL(url(maxLengthURL)), 'URI_MAX_LENGTH_URL');
+      expect(() => checkHttpURL(url(maxLengthURL - 1))).not.toThrow();
+    });
+
     it('should not throw an uri error when uri is a valid https url when https is true', () => {
       expect(() => checkHttpURL('http://example.com:8042/over/there?name=ferret#nose'), {
         https: true,

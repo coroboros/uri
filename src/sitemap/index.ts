@@ -30,10 +30,13 @@ specialCharsKeys.forEach((char) => {
 
 const pencodingsKeys = Object.keys(pencodings);
 
-// sitemap entities to be escaped in URLs
+// sitemap entities to be escaped in URLs (sitemaps.org requires all five)
 const entities: Record<string, string> = {
   '&': '&amp;',
   "'": '&apos;',
+  '"': '&quot;',
+  '>': '&gt;',
+  '<': '&lt;',
 };
 
 // entities keys

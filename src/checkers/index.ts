@@ -546,7 +546,8 @@ const checkHttpURL = function checkHttpURL(
   }
 
   // max length
-  if (is(String, href) && href.length > maxLengthURL) {
+  // sitemaps.org: a URL must be strictly less than 2,048 characters
+  if (is(String, href) && href.length >= maxLengthURL) {
     const error = new URIError(
       `max URL length of ${maxLengthURL} reached: ${href.length}`,
     ) as URIErrorWithCode;
