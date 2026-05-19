@@ -584,6 +584,20 @@ describe('#parser', () => {
       expect(both).toHaveProperty('fragment', '');
       expect(both).toHaveProperty('href', 'http://example.com/?#');
     });
+
+    // RFC-3986 §3.2.3: port = *DIGIT, so an empty port (zero digits) is
+    // syntactically valid — present-but-empty ('') and distinct from an
+    // absent port (null), not an error.
+    it('should keep an empty port present-but-empty, distinct from absent (RFC-3986 §3.2.3)', () => {
+      const emptyPort = parseURI('http://example.com:/path');
+      expect(emptyPort).toHaveProperty('port', '');
+      expect(emptyPort).toHaveProperty('host', 'example.com');
+      expect(emptyPort).toHaveProperty('href', 'http://example.com:/path');
+
+      const absentPort = parseURI('http://example.com/path');
+      expect(absentPort).toHaveProperty('port', null);
+      expect(absentPort).toHaveProperty('href', 'http://example.com/path');
+    });
   });
 
   describe('when using recomposeURI', () => {

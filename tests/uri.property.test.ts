@@ -37,8 +37,12 @@ describe('#uri — property tests', () => {
   it('removeDotSegments is idempotent and leaves no . or .. complete segment', () => {
     const segment = fc.constantFrom('a', 'b', '.', '..', 'c', 'd');
     const path = fc
-      .array(segment, { maxLength: 12 })
-      .map((segs) => (fc.sample(fc.boolean(), 1)[0] ? `/${segs.join('/')}` : segs.join('/')));
+      .tuple(fc.nat({ max: 8 }), fc.array(segment, { maxLength: 12 }), fc.boolean())
+      .map(([climb, segs, absolute]) => {
+        const body = `${'../'.repeat(climb)}${segs.join('/')}`;
+
+        return absolute ? `/${body}` : body;
+      });
 
     fc.assert(
       fc.property(path, (p) => {
