@@ -386,7 +386,8 @@ The empty string is returned if the base is not absolute or an argument is not a
 
 **Note**:
 
-- the strict algorithm is used: a reference scheme equal to the base scheme is not ignored.
+- the strict algorithm is used: a reference scheme equal to the base scheme is not ignored;
+- a fragment on the base is ignored — the base is used stripped of any fragment (**RFC-3986 §5.1**).
 
 <br/>
 
@@ -1590,9 +1591,9 @@ Errors emitted by *@coroboros/uri* are native URIError with an additional *code*
 
 *@coroboros/uri* implements:
 
-- **RFC-3986** — generic URI syntax: parse, recompose, reference resolution (§5.2), percent-encoding, and validation.
+- **RFC-3986** — generic URI syntax: parse (Appendix B), recompose (§5.3), reference resolution (§5.2), percent-encoding (§2.1, §6.2.2.1), and character validation (§3.1–§3.5).
 - **RFC-3987** — IDNs via Punycode, through Node's `node:url` (`domainToASCII` / `domainToUnicode`).
-- **RFC 6874** — IPv6 zone identifiers in a URI.
+- **RFC 6874 §2** — IPv6 zone identifiers in a URI (the `%25` delimiter and `ZoneID = 1*( unreserved / pct-encoded )`).
 - **RFC 1034** / **RFC 1123** — domain name rules.
 - **sitemaps.org** — the Sitemap protocol for Sitemap URLs.
 
@@ -1602,7 +1603,7 @@ Errors emitted by *@coroboros/uri* are native URIError with an additional *code*
 - a port must be a string of ASCII digits (**RFC-3986 §3.2.3**) — values like `0x1F` are rejected;
 - `userinfo` is delimited by the last `@`, and a non-IPv6 host/port by the last `:` (**RFC-3986 §3.2**);
 - percent-encoding hex is case-insensitive: `%3a` and `%3A` are both accepted (**RFC-3986 §6.2.2.1**);
-- inside a URI, an IPv6 zone identifier must use the `%25` delimiter (**RFC 6874**); the standalone `isIPv6` validator stays lenient;
+- inside a URI, an IPv6 zone identifier must use the `%25` delimiter and a non-empty `ZoneID` of `unreserved` / `pct-encoded` characters (**RFC 6874 §2**); the standalone `isIPv6` validator stays lenient;
 - `encodeSitemapURL` escapes all five XML entities `& ' " < >`, and a Sitemap URL must be shorter than 2,048 characters (sitemaps.org). For example, `encodeSitemapURL('http://example.com/a&b<c>d')` returns `'http://example.com/a&amp;b&lt;c&gt;d'`.
 
 **Non-goals**:

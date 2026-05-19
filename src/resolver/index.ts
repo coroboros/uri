@@ -152,7 +152,9 @@ const recompose = function recompose(target: Reference): string {
  * and recomposing per §5.3.
  *
  * The base must be an absolute URI (a scheme is required, RFC-3986 §5.2.1);
- * the empty string is returned if base or reference is invalid.
+ * a fragment on the base is ignored (RFC-3986 §5.1: the base is used
+ * stripped of any fragment); the empty string is returned if base or
+ * reference is invalid.
  *
  * Based on:
  * - RFC-3986 https://tools.ietf.org/html/rfc3986#section-5.2.
