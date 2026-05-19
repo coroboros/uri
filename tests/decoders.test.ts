@@ -158,6 +158,12 @@ describe('#decoders', () => {
       expectThrowWithCode(() => decodeURIString('ht°p://example.com'), 'URI_INVALID_SCHEME_CHAR');
     });
 
+    it('should lowercase the whole uri when the lowercase option is true', () => {
+      expect(decodeURIString('HTTP://EXAMPLE.COM/P%20X', { web: true, lowercase: true })).toBe(
+        'http://example.com/p x',
+      );
+    });
+
     it('should throw an uri error if scheme is not http or https when option is web or sitemap', () => {
       expectThrowWithCode(
         () => decodeURIString('httpp://www.example.com', { web: true }),

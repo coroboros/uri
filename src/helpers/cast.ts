@@ -86,6 +86,7 @@ const integer = function integer(thing: unknown): number | undefined {
   if (castNum !== undefined) {
     const int = parseInt(String(castNum), 10);
 
+    /* v8 ignore next -- unreachable: parseInt of a finite number's String is never NaN */
     if (!Number.isNaN(int)) {
       castInt = int;
     }

@@ -198,6 +198,7 @@ const encodeURIString = function encodeURIString(
   });
 
   // path
+  /* v8 ignore next -- unreachable '': checkURISyntax always yields a string path */
   const pathEncoded = encodeURIComponentString(path ?? '', {
     sitemap,
     type: 'path',

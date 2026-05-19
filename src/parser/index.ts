@@ -190,6 +190,7 @@ const parseURI = function parseURI(uri: string): ParsedURI {
   }
 
   // extract uri components from RegExp
+  /* v8 ignore next -- unreachable []: the all-optional Appendix-B regexp always matches a non-empty string */
   const [, scheme, authorityParsed, path, queryParsed, fragmentParsed] = uri.match(uriRegexp) ?? [];
 
   // scheme is required and must be a not empty string or this is not an uri
@@ -219,6 +220,7 @@ const parseURI = function parseURI(uri: string): ParsedURI {
     }
 
     // try to extract host and port only if any
+    /* v8 ignore next -- unreachable false branch: hostAndPort is always an assigned string after the authority split */
     if (is(String, hostAndPort)) {
       // detect IPv6 here first
       const ipv6Match = hostAndPort.match(ipv6Regexp);
@@ -241,9 +243,11 @@ const parseURI = function parseURI(uri: string): ParsedURI {
       }
 
       // hostPunydecoded should be the host in Unicode, host its Punycode value
+      /* v8 ignore start -- unreachable null branch: the ipv6 regexp's required capture means hostParsed is always a string here */
       const hostLowerCase = is(String, hostParsed) ? hostParsed.toLowerCase() : null;
       const toASCII = punycode(hostLowerCase ?? '');
       const toUnicode = punydecode(hostLowerCase ?? '');
+      /* v8 ignore stop */
 
       // host parsed was in Unicode
       if (hostLowerCase !== toASCII) {
@@ -279,6 +283,7 @@ const parseURI = function parseURI(uri: string): ParsedURI {
       // we still want to know the original host and authority provided
       // to check possible uri errors: a null host with a hostPunydecoded filled
       // means uri parsed had an invalid host name
+      /* v8 ignore next -- unreachable false branch: hostPunydecoded is always an assigned string in this block */
       if (exists(hostPunydecoded)) {
         authorityPunydecoded = '';
 
@@ -324,6 +329,7 @@ const parseURI = function parseURI(uri: string): ParsedURI {
 
   // pathqf: recompose path + query + fragment if any
   // using valueOf to avoid potential String objects mutation with parsed.path
+  /* v8 ignore next -- unreachable null branch: the Appendix-B regexp always captures a string path */
   parsed.pathqf = is(String, path) ? path.valueOf() : null;
 
   if (is(String, parsed.pathqf)) {
@@ -344,6 +350,7 @@ const parseURI = function parseURI(uri: string): ParsedURI {
   parsed.host = host;
   parsed.hostPunydecoded = hostPunydecoded;
   parsed.port = port;
+  /* v8 ignore next -- unreachable: the Appendix-B regexp always captures a string path */
   parsed.path = path ?? null;
   parsed.query = query;
   parsed.fragment = fragment;

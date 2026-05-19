@@ -29,11 +29,13 @@ interface Reference {
  * defined/undefined distinction §5.2.2 relies on is preserved.
  */
 const parseReference = function parseReference(reference: string): Reference {
+  /* v8 ignore next -- unreachable []: the Appendix-B regexp is all-optional and matches any string */
   const [, scheme, authority, path, query, fragment] = reference.match(referenceRegexp) ?? [];
 
   return {
     scheme: scheme ?? null,
     authority: authority ?? null,
+    /* v8 ignore next -- unreachable '': the path group [^?#]* always captures a string */
     path: path ?? '',
     query: query ?? null,
     fragment: fragment ?? null,
@@ -120,6 +122,7 @@ const merge = function merge(base: Reference, refPath: string): string {
 const recompose = function recompose(target: Reference): string {
   let result = '';
 
+  /* v8 ignore next -- unreachable false branch: a resolved target always has a scheme (the base is absolute) */
   if (is(String, target.scheme)) {
     result += `${target.scheme}:`;
   }

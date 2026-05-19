@@ -45,6 +45,7 @@ const decodeURIComponentString = function decodeURIComponentString(
   if (sitemap === true) {
     const uriToDecode = componentToDecode.replace(
       sitemapDecodeRegexp,
+      /* v8 ignore next -- unreachable '': the regexp is built from these keys so every match resolves */
       (match) => escapeCodes[match] || pencodings[match] || '',
     );
 
@@ -154,6 +155,7 @@ const decodeURIString = function decodeURIString(
   const userinfoDecoded = decodeURIComponentString(userinfo ?? '', { sitemap, lowercase: false });
 
   // path
+  /* v8 ignore next -- unreachable '': checkURISyntax always yields a string path */
   const pathDecoded = decodeURIComponentString(path ?? '', { sitemap, lowercase: false });
 
   // RFC-3986 §5.3: an absent query/fragment (null) stays absent and a

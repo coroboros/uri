@@ -8,6 +8,9 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'html'],
       include: ['src/**/*.ts'],
+      thresholds: {
+        100: true,
+      },
     },
   },
 });

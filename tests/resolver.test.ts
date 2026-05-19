@@ -112,6 +112,17 @@ describe('#resolver', () => {
       expect(resolveURI('http://a', './g')).toBe('http://a/g');
     });
 
+    it('should merge against a base whose path has no slash', () => {
+      expect(resolveURI('a:b', 'c')).toBe('a:c');
+      expect(resolveURI('a:b', './c')).toBe('a:c');
+    });
+
+    it('should round-trip a reference carrying every component', () => {
+      expect(resolveURI('http://a/b/c', '//h/p?x=1#y')).toBe('http://h/p?x=1#y');
+      expect(resolveURI('http://a/b/c', 's:/p?x#y')).toBe('s:/p?x#y');
+      expect(resolveURI('http://h/p?q#f', '')).toBe('http://h/p?q');
+    });
+
     it('should return the empty string when the base is not absolute', () => {
       expect(resolveURI('/b/c', 'g')).toBe('');
       expect(resolveURI('//host/path', 'g')).toBe('');

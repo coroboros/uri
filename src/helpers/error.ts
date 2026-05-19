@@ -1,7 +1,7 @@
 /**
  * error helper
  *
- * - fail(code, message, cause?) -> never (throws a coded URIError)
+ * - fail(code, message) -> never (throws a coded URIError)
  */
 
 type URIErrorWithCode = URIError & { code: string };
@@ -9,13 +9,11 @@ type URIErrorWithCode = URIError & { code: string };
 /**
  * @func fail
  *
- * Throw a URIError carrying a stable `code` string (and an optional
- * `Error.cause`). The thrown value is always `instanceof URIError`.
+ * Throw a URIError carrying a stable `code` string. The thrown value is
+ * always `instanceof URIError`.
  */
-const fail = function fail(code: string, message: string, cause?: unknown): never {
-  const error = (
-    cause === undefined ? new URIError(message) : new URIError(message, { cause })
-  ) as URIErrorWithCode;
+const fail = function fail(code: string, message: string): never {
+  const error = new URIError(message) as URIErrorWithCode;
 
   error.code = code;
 

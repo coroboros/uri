@@ -115,6 +115,7 @@ const checkSitemapEncoding = function checkSitemapEncoding(
     for (let j = 0; j < escapeCodesKeysLen; j += 1) {
       const code = escapeCodesKeys[j];
 
+      /* v8 ignore next 3 -- unreachable: j is bounded by escapeCodesKeys.length so the index is always defined */
       if (code === undefined) {
         break;
       }
@@ -184,6 +185,7 @@ const checkComponent = function checkComponent({
     case 'fragment':
       checkCharFunc = checkSitemap ? isSitemapQueryOrFragmentChar : isQueryOrFragmentChar;
       break;
+    /* v8 ignore next -- unreachable: type is validated to one of the four cases before the switch */
     default:
   }
 
@@ -296,17 +298,21 @@ const checkURISyntax = function checkURISyntax(uri: string): CheckedURISyntax {
   // scheme (required)
   if (!is(String, scheme)) {
     fail('URI_MISSING_SCHEME', 'uri scheme is required');
+    /* v8 ignore start -- unreachable: parseURI yields a null or non-empty scheme, never an empty string */
   } else if (schemeLen <= 0) {
     fail('URI_EMPTY_SCHEME', 'uri scheme must not be empty');
   }
+  /* v8 ignore stop */
 
   // path (required), can be an empty string
+  /* v8 ignore next 3 -- unreachable: the Appendix-B regexp always captures a string path */
   if (!is(String, path)) {
     fail('URI_MISSING_PATH', 'uri path is required');
   }
 
   // path: if authority is present path must be empty or start with /
   if (is(String, authority) && authority.length > 0) {
+    /* v8 ignore next 3 -- unreachable: when authority is present the Appendix-B regexp makes path empty or '/'-prefixed */
     if (!(path === '' || (path as string).startsWith('/'))) {
       fail('URI_INVALID_PATH', "path must be empty or start with '/' when authority is present");
     }
