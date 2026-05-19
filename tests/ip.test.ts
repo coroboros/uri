@@ -368,6 +368,14 @@ describe('#ip', () => {
       });
     });
 
+    // isIPv6 is a standalone literal validator and stays lenient on the
+    // zone delimiter (bare '%'). RFC 6874's "%25" requirement is enforced
+    // only in URI context, by the checkers.
+    it('should accept a bare % zone id when used standalone', () => {
+      expect(isIPv6('fe80::1%eth0')).toBe(true);
+      expect(isIPv6('fe80::1%25eth0')).toBe(true);
+    });
+
     it('should return false if ip is not a valid v6 ip', () => {
       v6not.forEach((ip) => {
         expect(isIPv6(ip)).toBe(false);

@@ -368,6 +368,20 @@ const checkURISyntax = function checkURISyntax(uri: string): CheckedURISyntax {
     throw error;
   }
 
+  // RFC 6874: an IPv6 zone identifier in a URI MUST use the percent-encoded
+  // "%25" delimiter; a bare "%" is invalid in URI context
+  if (is(String, host) && host.includes(':')) {
+    const zoneAt = host.indexOf('%');
+
+    if (zoneAt !== -1 && host.slice(zoneAt, zoneAt + 3) !== '%25') {
+      const error = new URIError(
+        `IPv6 zone identifier must use the '%25' delimiter, got '${host}'`,
+      ) as URIErrorWithCode;
+      error.code = 'URI_INVALID_HOST';
+      throw error;
+    }
+  }
+
   return {
     scheme,
     authority,

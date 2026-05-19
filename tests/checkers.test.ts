@@ -680,6 +680,15 @@ describe('#checkers', () => {
       expectThrowWithCode(() => checkURISyntax('foo://'), 'URI_INVALID_HOST');
     });
 
+    // RFC 6874: an IPv6 zone identifier in a URI MUST use the percent-encoded
+    // "%25" delimiter; a bare "%" is invalid in URI context.
+    it('should require the RFC 6874 %25 zone delimiter in a URI host', () => {
+      expectThrowWithCode(() => checkURISyntax('http://[fe80::1%eth0]/'), 'URI_INVALID_HOST');
+      expectThrowWithCode(() => checkURI('http://[fe80::1%eth0]/'), 'URI_INVALID_HOST');
+      expect(() => checkURI('http://[fe80::1%25eth0]/')).not.toThrow();
+      expect(() => checkWebURL('http://[fe80::1%25eth0]/')).not.toThrow();
+    });
+
     it('should not throw if an uri has at least a scheme and a path', () => {
       expect(() => checkURISyntax('http://example.com')).not.toThrow();
       expect(() => checkURISyntax('http://example.com/path')).not.toThrow();
