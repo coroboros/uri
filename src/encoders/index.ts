@@ -19,6 +19,7 @@ import { checkSchemeChars, checkURISyntax } from '../checkers/index.js';
 import { maxLengthURL, maxPortInteger, minPortInteger } from '../config/index.js';
 import { isDomain } from '../domain/index.js';
 import { int, isPort } from '../helpers/cast.js';
+import { fail } from '../helpers/error.js';
 import { exists, is } from '../helpers/object.js';
 import { isIP } from '../ip/index.js';
 import { recomposeURI } from '../parser/index.js';
@@ -144,11 +145,7 @@ const encodeURIString = function encodeURIString(
   // scheme must be http or https for web/sitemap or with valid chars, always in lowercase
   if (webURL) {
     if (scheme !== 'http' && scheme !== 'https') {
-      const error = new URIError(`scheme must be http or https, got '${scheme}'`) as URIError & {
-        code: string;
-      };
-      error.code = 'URI_INVALID_SCHEME';
-      throw error;
+      fail('URI_INVALID_SCHEME', `scheme must be http or https, got '${scheme}'`);
     }
   } else {
     // check scheme characters, it is not intended to encode a scheme
@@ -157,18 +154,12 @@ const encodeURIString = function encodeURIString(
 
   // authority is required and must be a valid host for web/sitemap
   if (webURL && !is(String, authority)) {
-    const error = new URIError('authority is required') as URIError & { code: string };
-    error.code = 'URI_MISSING_AUTHORITY';
-    throw error;
+    fail('URI_MISSING_AUTHORITY', 'authority is required');
   }
 
   // check host is a valid ip first (RFC-3986) or a domain name
   if (exists(host) && !isIP(host) && !isDomain(host)) {
-    const error = new URIError(
-      `host must be a valid ip or domain name, got '${host}'`,
-    ) as URIError & { code: string };
-    error.code = 'URI_INVALID_HOST';
-    throw error;
+    fail('URI_INVALID_HOST', `host must be a valid ip or domain name, got '${host}'`);
   }
 
   // check port is a valid RFC-3986 *DIGIT and in range if any
@@ -176,11 +167,10 @@ const encodeURIString = function encodeURIString(
     exists(port) &&
     (!isPort(port) || int(port, { ge: minPortInteger, le: maxPortInteger }) === undefined)
   ) {
-    const error = new URIError(
+    fail(
+      'URI_INVALID_PORT',
       `port must be an integer between ${minPortInteger}-${maxPortInteger}, got '${port}'`,
-    ) as URIError & { code: string };
-    error.code = 'URI_INVALID_PORT';
-    throw error;
+    );
   }
 
   // userinfo
@@ -221,11 +211,7 @@ const encodeURIString = function encodeURIString(
 
   // sitemaps.org: a URL must be strictly less than 2,048 characters
   if (webURL && uriencoded.length >= maxLengthURL) {
-    const error = new URIError(
-      `max URL length of ${maxLengthURL} reached: ${uriencoded.length}`,
-    ) as URIError & { code: string };
-    error.code = 'URI_MAX_LENGTH_URL';
-    throw error;
+    fail('URI_MAX_LENGTH_URL', `max URL length of ${maxLengthURL} reached: ${uriencoded.length}`);
   }
 
   return uriencoded;
