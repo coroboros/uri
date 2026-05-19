@@ -542,6 +542,26 @@ describe('#parser', () => {
       expect(parsedURI).toHaveProperty('fragment', null);
       expect(parsedURI).toHaveProperty('href', 'http://user:pass@[fe80::7:8%eth0]:8080/');
     });
+
+    // RFC-3986 §3.2.1: userinfo is delimited by the LAST '@', not the first.
+    // Splitting on the first '@' silently truncates the host (host confusion).
+    it('should split userinfo on the last @ (RFC-3986 §3.2.1)', () => {
+      const parsedURI = parseURI('foo://user:pa@ss@example.com:8042/p?q#f');
+
+      expect(parsedURI).toHaveProperty('userinfo', 'user:pa@ss');
+      expect(parsedURI).toHaveProperty('host', 'example.com');
+      expect(parsedURI).toHaveProperty('port', 8042);
+    });
+
+    // RFC-3986 §3.2.2/§3.2.3: for a non-IPv6 authority the port follows the
+    // LAST ':'; splitting on the first ':' silently truncates the host.
+    it('should split host and port on the last : (RFC-3986 §3.2.2)', () => {
+      const parsedURI = parseURI('foo://a:b:8042/p');
+
+      expect(parsedURI).toHaveProperty('host', null);
+      expect(parsedURI).toHaveProperty('hostPunydecoded', 'a:b');
+      expect(parsedURI).toHaveProperty('authorityPunydecoded', 'a:b:8042');
+    });
   });
 
   describe('when using recomposeURI', () => {

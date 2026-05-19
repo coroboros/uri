@@ -204,12 +204,14 @@ const parseURI = function parseURI(uri: string): ParsedURI {
   if (is(String, authorityParsed)) {
     let hostAndPort: string | null = null;
 
-    [userinfo = null, hostAndPort = null] = authorityParsed.split('@');
+    // RFC-3986 §3.2.1: userinfo is delimited by the last '@' before the host
+    const userinfoEnd = authorityParsed.lastIndexOf('@');
 
-    // authority had no '@' and no userinfo can be extracted
-    if (!exists(hostAndPort) && exists(userinfo)) {
-      hostAndPort = userinfo;
-      userinfo = null;
+    if (userinfoEnd === -1) {
+      hostAndPort = authorityParsed;
+    } else {
+      userinfo = authorityParsed.slice(0, userinfoEnd);
+      hostAndPort = authorityParsed.slice(userinfoEnd + 1);
     }
 
     // try to extract host and port only if any
@@ -223,8 +225,15 @@ const parseURI = function parseURI(uri: string): ParsedURI {
       if (Array.isArray(ipv6Match)) {
         [, hostParsed = null, portToCast = null] = ipv6Match;
       } else {
-        // not an ipv6
-        [hostParsed = null, portToCast = null] = hostAndPort.split(':');
+        // not an ipv6 — RFC-3986 §3.2.2/§3.2.3: port follows the last ':'
+        const portStart = hostAndPort.lastIndexOf(':');
+
+        if (portStart === -1) {
+          hostParsed = hostAndPort;
+        } else {
+          hostParsed = hostAndPort.slice(0, portStart);
+          portToCast = hostAndPort.slice(portStart + 1);
+        }
       }
 
       // hostPunydecoded should be the host in Unicode, host its Punycode value
