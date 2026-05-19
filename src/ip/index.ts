@@ -27,6 +27,11 @@ const v6 = `
   .replace(/\n/g, '')
   .trim();
 
+// compiled once at module load — these patterns are stateless (no `g` flag)
+const ipv4Regexp = new RegExp(`^${v4}$`);
+const ipv6Regexp = new RegExp(`^${v6}$`);
+const ipRegexp = new RegExp(`(?:^${v4}$)|(?:^${v6}$)`);
+
 /**
  * @func isIP
  *
@@ -37,7 +42,7 @@ const isIP = function isIP(ip: string): boolean {
     return false;
   }
 
-  return new RegExp(`(?:^${v4}$)|(?:^${v6}$)`).test(ip);
+  return ipRegexp.test(ip);
 };
 
 /**
@@ -50,7 +55,7 @@ const isIPv4 = function isIPv4(ip: string): boolean {
     return false;
   }
 
-  return new RegExp(`^${v4}$`).test(ip);
+  return ipv4Regexp.test(ip);
 };
 
 /**
@@ -63,7 +68,7 @@ const isIPv6 = function isIPv6(ip: string): boolean {
     return false;
   }
 
-  return new RegExp(`^${v6}$`).test(ip);
+  return ipv6Regexp.test(ip);
 };
 
 export { isIP, isIPv4, isIPv6 };

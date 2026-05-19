@@ -16,6 +16,10 @@ import { isIP } from '../ip/index.js';
 import { recomposeURI } from '../parser/index.js';
 import { escapeCodes, escapeCodesKeys, pencodings, pencodingsKeys } from '../sitemap/index.js';
 
+// compiled once at module load — used only via String.prototype.replace,
+// which resets lastIndex per spec, so reusing the global regexp is safe
+const sitemapDecodeRegexp = new RegExp(escapeCodesKeys.concat(pencodingsKeys).join('|'), 'g');
+
 /**
  * @func decodeURIComponentString
  *
@@ -39,9 +43,8 @@ const decodeURIComponentString = function decodeURIComponentString(
   const componentToDecode = lowercase === true ? component.toLowerCase() : component;
 
   if (sitemap === true) {
-    const regexp = new RegExp(escapeCodesKeys.concat(pencodingsKeys).join('|'), 'g');
     const uriToDecode = componentToDecode.replace(
-      regexp,
+      sitemapDecodeRegexp,
       (match) => escapeCodes[match] || pencodings[match] || '',
     );
 
