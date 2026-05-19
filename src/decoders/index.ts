@@ -9,7 +9,7 @@
 import { checkSchemeChars, checkURISyntax } from '../checkers/index.js';
 import { maxLengthURL, maxPortInteger, minPortInteger } from '../config/index.js';
 import { isDomain } from '../domain/index.js';
-import { int } from '../helpers/cast.js';
+import { int, isPort } from '../helpers/cast.js';
 import { exists, is } from '../helpers/object.js';
 import { isIP } from '../ip/index.js';
 import { recomposeURI } from '../parser/index.js';
@@ -138,8 +138,11 @@ const decodeURIString = function decodeURIString(
     throw error;
   }
 
-  // check port is a number if any
-  if (exists(port) && int(port, { ge: minPortInteger, le: maxPortInteger }) === undefined) {
+  // check port is a valid RFC-3986 *DIGIT and in range if any
+  if (
+    exists(port) &&
+    (!isPort(port) || int(port, { ge: minPortInteger, le: maxPortInteger }) === undefined)
+  ) {
     const error = new URIError(
       `port must be an integer between ${minPortInteger}-${maxPortInteger}, got '${port}'`,
     ) as URIErrorWithCode;

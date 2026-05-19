@@ -6,7 +6,7 @@
  * - parseURI(uri) -> Object
  */
 import { maxPortInteger, minPortInteger } from '../config/index.js';
-import { int } from '../helpers/cast.js';
+import { int, isPort } from '../helpers/cast.js';
 import { exists, is } from '../helpers/object.js';
 import { isIPv6 } from '../ip/index.js';
 import { punycode, punydecode } from '../punycode/index.js';
@@ -112,7 +112,11 @@ const recomposeURI = function recomposeURI(components?: URIComponents): string {
 
     uri += hostToURI(host);
 
-    if (exists(port) && int(port, { ge: minPortInteger, le: maxPortInteger }) !== undefined) {
+    if (
+      exists(port) &&
+      isPort(port) &&
+      int(port, { ge: minPortInteger, le: maxPortInteger }) !== undefined
+    ) {
       uri += `:${port}`;
     }
   } else {
@@ -250,7 +254,12 @@ const parseURI = function parseURI(uri: string): ParsedURI {
       // necessary to handle possible port errors when checking uri
       // port is a valid integer or we keep its initial value to be aware of the error
       // here we also don't check wrong range for the same reason
-      port = int(portToCast) || portToCast;
+      // RFC-3986 §3.2.3: a non-digit port (0x1F, 1e3, ...) is kept raw, not
+      // coerced by Number(), so checkURI can flag it as URI_INVALID_PORT
+      port =
+        is(String, portToCast) && portToCast.length > 0 && !isPort(portToCast)
+          ? portToCast
+          : int(portToCast) || portToCast;
 
       // recompose authority with punycode ASCII and Unicode serialization of the host
       // userinfo@host:port

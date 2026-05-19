@@ -122,4 +122,18 @@ const int = function int(thing: unknown, { ge, le }: Range = {}): number | undef
   return castInt;
 };
 
-export { int, integer, num, number };
+/**
+ * @func isPort
+ *
+ * RFC-3986 §3.2.3: port = *DIGIT. True if the value is absent
+ * (null/undefined) or a possibly empty string of ASCII digits.
+ * The numeric range is validated separately by `int`.
+ *
+ * Rejects JS Number coercion artefacts (hex `0x1F`, scientific `1e3`,
+ * whitespace) that `Number()` would otherwise accept.
+ */
+const isPort = function isPort(thing: unknown): boolean {
+  return thing === null || thing === undefined || /^[0-9]*$/.test(String(thing));
+};
+
+export { int, integer, isPort, num, number };

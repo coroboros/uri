@@ -117,7 +117,7 @@ describe('#checkers', () => {
 
     it('should throw an uri error when percent encoding is malformed', () => {
       expectThrowWithCode(
-        () => checkPercentEncoding('percent%2encoding', 7),
+        () => checkPercentEncoding('percent%2gncoding', 7),
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
@@ -813,7 +813,7 @@ describe('#checkers', () => {
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
-        () => checkURI('foo://user:%acpass@example.com:8042/over/there?name=ferret#nose'),
+        () => checkURI('foo://user:%agpass@example.com:8042/over/there?name=ferret#nose'),
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
@@ -900,6 +900,17 @@ describe('#checkers', () => {
       );
     });
 
+    // RFC-3986 §3.2.3: port = *DIGIT. JS Number() coerces 0x1F/1e3/0o17 to a
+    // finite number; a compliant validator MUST still reject them as ports.
+    it('should reject Number()-coercible non-digit ports (RFC-3986 §3.2.3)', () => {
+      for (const bad of ['0x1F', '1e3', '0o17', '0b11']) {
+        expectThrowWithCode(
+          () => checkURI(`foo://example.com:${bad}/over/there?name=ferret#nose`),
+          'URI_INVALID_PORT',
+        );
+      }
+    });
+
     it('should throw an uri error when port is out of range', () => {
       expectThrowWithCode(
         () => checkURI(`foo://example.com:${minPortInteger - 1}/over/there?name=ferret#nose`),
@@ -918,6 +929,13 @@ describe('#checkers', () => {
       expect(() =>
         checkURI(`foo://example.com:${maxPortInteger}/over/there?name=ferret#nose`),
       ).not.toThrow();
+    });
+
+    // RFC-3986 §2.1 / §6.2.2.1: %3a and %3A are equivalent. checkURI MUST NOT
+    // reject a URI solely because its percent-encodings use lowercase hex.
+    it('should accept lowercase hex percent-encodings (RFC-3986 §6.2.2.1)', () => {
+      expect(() => checkURI('foo://example.com:8042/%c3%bcber/%2f?a=%3a#%7e')).not.toThrow();
+      expect(() => checkURI('foo://example.com/%3a%2f%3f')).not.toThrow();
     });
 
     it('should throw an uri error if path has invalid characters', () => {
@@ -1059,11 +1077,11 @@ describe('#checkers', () => {
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
-        () => checkURI('foo://example.com:8042/over/there%Aa?name=ferret#nose'),
+        () => checkURI('foo://example.com:8042/over/there%Ag?name=ferret#nose'),
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
-        () => checkURI('foo://example.com:8042/%2cover/there%20%20?name=ferret#nose'),
+        () => checkURI('foo://example.com:8042/%2gover/there%20%20?name=ferret#nose'),
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
@@ -1095,11 +1113,11 @@ describe('#checkers', () => {
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
-        () => checkURI('foo://example.com:8042/over/there?name=ferret#nose%ef'),
+        () => checkURI('foo://example.com:8042/over/there?name=ferret#nose%eg'),
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
-        () => checkURI('foo://example.com:8042/over/there?name=ferret#nose%ac'),
+        () => checkURI('foo://example.com:8042/over/there?name=ferret#nose%ag'),
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
@@ -1107,11 +1125,11 @@ describe('#checkers', () => {
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
-        () => checkURI('foo://example.com:8042/over/there?name=ferret#nose%8c'),
+        () => checkURI('foo://example.com:8042/over/there?name=ferret#nose%8g'),
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
-        () => checkURI('foo://example.com:8042/over/there?name=ferret#nose%a9'),
+        () => checkURI('foo://example.com:8042/over/there?name=ferret#nose%az'),
         'URI_INVALID_PERCENT_ENCODING',
       );
     });
@@ -1301,7 +1319,7 @@ describe('#checkers', () => {
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
-        () => checkHttpURL('http://user:%acpass@example.com:8042/over/there?name=ferret#nose'),
+        () => checkHttpURL('http://user:%agpass@example.com:8042/over/there?name=ferret#nose'),
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
@@ -1546,11 +1564,11 @@ describe('#checkers', () => {
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
-        () => checkHttpURL('http://example.com:8042/over/there%Aa?name=ferret#nose'),
+        () => checkHttpURL('http://example.com:8042/over/there%Ag?name=ferret#nose'),
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
-        () => checkHttpURL('http://example.com:8042/%2cover/there%20%20?name=ferret#nose'),
+        () => checkHttpURL('http://example.com:8042/%2gover/there%20%20?name=ferret#nose'),
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
@@ -1582,11 +1600,11 @@ describe('#checkers', () => {
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
-        () => checkHttpURL('http://example.com:8042/over/there?name=ferret#nose%ef'),
+        () => checkHttpURL('http://example.com:8042/over/there?name=ferret#nose%eg'),
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
-        () => checkHttpURL('http://example.com:8042/over/there?name=ferret#nose%ac'),
+        () => checkHttpURL('http://example.com:8042/over/there?name=ferret#nose%ag'),
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
@@ -1594,11 +1612,11 @@ describe('#checkers', () => {
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
-        () => checkHttpURL('http://example.com:8042/over/there?name=ferret#nose%8c'),
+        () => checkHttpURL('http://example.com:8042/over/there?name=ferret#nose%8g'),
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
-        () => checkHttpURL('http://example.com:8042/over/there?name=ferret#nose%a9'),
+        () => checkHttpURL('http://example.com:8042/over/there?name=ferret#nose%az'),
         'URI_INVALID_PERCENT_ENCODING',
       );
     });
