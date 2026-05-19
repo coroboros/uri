@@ -26,6 +26,7 @@ Follows the Coroboros engineering global rules. Repo-specific divergences are st
 - `src/parser/index.ts` — `parseURI`, `recomposeURI`, `hostToURI` (RFC-3986 Appendix B grammar)
 - `src/checkers/index.ts` — URI / URL / Sitemap validators, error taxonomy
 - `src/encoders/index.ts`, `src/decoders/index.ts` — RFC-3986 encode/decode
+- `src/resolver/index.ts` — `resolveURI`, `removeDotSegments` (RFC-3986 §5.2 verbatim)
 - `src/helpers/object.ts` — private `exists` / `is` type guards (inlined, not exported)
 - `tsdown.config.ts` — dual build config (ESM + CJS + dts)
 - `tests/` — Vitest suites, one test file per source module
@@ -33,6 +34,7 @@ Follows the Coroboros engineering global rules. Repo-specific divergences are st
 ## Public API (1.0.0 contract)
 - `punycode(domain)`, `punydecode(domain)` — domain ASCII/Unicode serialization
 - `parseURI(uri)`, `recomposeURI(components)` — RFC-3986 parse / recompose
+- `resolveURI(base, reference)`, `removeDotSegments(path)` — RFC-3986 §5.2 reference resolution
 - `isDomainLabel(label)`, `isDomain(name)`, `isIP(ip)`, `isIPv4(ip)`, `isIPv6(ip)` — validators
 - `checkURI(uri)`, `checkHttpURL(uri)`, `checkHttpsURL(uri)`, `checkWebURL(uri)`, `checkSitemapURL(uri)`, `checkHttpSitemapURL(uri)`, `checkHttpsSitemapURL(uri)` — throw a coded error on invalid input
 - `encodeURIComponentString(component, options)`, `encodeURIString(uri, options)`, `encodeWebURL(uri, options)`, `encodeSitemapURL(uri)` — RFC-3986 encoders
