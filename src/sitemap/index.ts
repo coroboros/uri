@@ -20,7 +20,7 @@ const specialChars: Record<string, string> = {
 };
 
 // special chars keys
-const specialCharsKeys = Object.keys(specialChars);
+const specialCharsKeys: string[] = Object.keys(specialChars);
 
 // inversed special chars (percent encodings)
 const pencodings: Record<string, string> = {};
@@ -28,7 +28,7 @@ specialCharsKeys.forEach((char) => {
   pencodings[specialChars[char] as string] = char;
 });
 
-const pencodingsKeys = Object.keys(pencodings);
+const pencodingsKeys: string[] = Object.keys(pencodings);
 
 // sitemap entities to be escaped in URLs (sitemaps.org requires all five)
 const entities: Record<string, string> = {
@@ -40,7 +40,7 @@ const entities: Record<string, string> = {
 };
 
 // entities keys
-const entitiesKeys = Object.keys(entities);
+const entitiesKeys: string[] = Object.keys(entities);
 
 // inversed entities keys (escape codes)
 const escapeCodes: Record<string, string> = {};
@@ -49,8 +49,8 @@ entitiesKeys.forEach((entity) => {
 });
 
 // escape codes keys and length
-const escapeCodesKeys = Object.keys(escapeCodes);
-const escapeCodesKeysLen = escapeCodesKeys.length;
+const escapeCodesKeys: string[] = Object.keys(escapeCodes);
+const escapeCodesKeysLen: number = escapeCodesKeys.length;
 
 export {
   entities,

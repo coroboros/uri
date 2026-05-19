@@ -46,7 +46,15 @@ import { entities, specialChars } from '../sitemap/index.js';
  */
 const encodeURIComponentString = function encodeURIComponentString(
   component: string,
-  { type, sitemap, lowercase }: { type?: string; sitemap?: boolean; lowercase?: boolean } = {},
+  {
+    type,
+    sitemap,
+    lowercase,
+  }: {
+    type?: string | undefined;
+    sitemap?: boolean | undefined;
+    lowercase?: boolean | undefined;
+  } = {},
 ): string {
   if (!is(String, component)) {
     return '';
@@ -133,7 +141,15 @@ const encodeURIComponentString = function encodeURIComponentString(
  */
 const encodeURIString = function encodeURIString(
   uri: string,
-  { web, sitemap, lowercase }: { web?: boolean; sitemap?: boolean; lowercase?: boolean } = {},
+  {
+    web,
+    sitemap,
+    lowercase,
+  }: {
+    web?: boolean | undefined;
+    sitemap?: boolean | undefined;
+    lowercase?: boolean | undefined;
+  } = {},
 ): string {
   const uriToEncode = is(String, uri) && lowercase === true ? uri.toLowerCase() : uri;
   const webURL = web === true || sitemap === true;
@@ -249,7 +265,7 @@ const encodeURIString = function encodeURIString(
  */
 const encodeWebURL = function encodeWebURL(
   uri: string,
-  { lowercase }: { lowercase?: boolean } = {},
+  { lowercase }: { lowercase?: boolean | undefined } = {},
 ): string {
   return encodeURIString(uri, { lowercase, web: true });
 };

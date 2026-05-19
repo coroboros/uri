@@ -34,7 +34,7 @@ const sitemapDecodeRegexp = new RegExp(escapeCodesKeys.concat(pencodingsKeys).jo
  */
 const decodeURIComponentString = function decodeURIComponentString(
   component: string,
-  { sitemap, lowercase }: { sitemap?: boolean; lowercase?: boolean } = {},
+  { sitemap, lowercase }: { sitemap?: boolean | undefined; lowercase?: boolean | undefined } = {},
 ): string {
   if (!is(String, component)) {
     return '';
@@ -91,7 +91,15 @@ const decodeURIComponentString = function decodeURIComponentString(
  */
 const decodeURIString = function decodeURIString(
   uri: string,
-  { web, sitemap, lowercase }: { web?: boolean; sitemap?: boolean; lowercase?: boolean } = {},
+  {
+    web,
+    sitemap,
+    lowercase,
+  }: {
+    web?: boolean | undefined;
+    sitemap?: boolean | undefined;
+    lowercase?: boolean | undefined;
+  } = {},
 ): string {
   const uriToDecode = is(String, uri) && lowercase === true ? uri.toLowerCase() : uri;
   const webURL = web === true || sitemap === true;
@@ -209,7 +217,7 @@ const decodeURIString = function decodeURIString(
  */
 const decodeWebURL = function decodeWebURL(
   uri: string,
-  { lowercase }: { lowercase?: boolean } = {},
+  { lowercase }: { lowercase?: boolean | undefined } = {},
 ): string {
   return decodeURIString(uri, { lowercase, web: true });
 };
@@ -245,7 +253,7 @@ const decodeWebURL = function decodeWebURL(
  */
 const decodeSitemapURL = function decodeSitemapURL(
   uri: string,
-  { lowercase }: { lowercase?: boolean } = {},
+  { lowercase }: { lowercase?: boolean | undefined } = {},
 ): string {
   return decodeURIString(uri, { lowercase, sitemap: true });
 };

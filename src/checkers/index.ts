@@ -153,9 +153,9 @@ const checkComponent = function checkComponent({
   string,
   sitemap,
 }: {
-  type?: string;
-  string?: string | null;
-  sitemap?: boolean;
+  type?: string | undefined;
+  string?: string | null | undefined;
+  sitemap?: boolean | undefined;
 } = {}): boolean {
   if (!['userinfo', 'path', 'query', 'fragment'].includes(type as string)) {
     fail(
@@ -371,7 +371,7 @@ const checkURISyntax = function checkURISyntax(uri: string): CheckedURISyntax {
  */
 const checkURI = function checkURI(
   uri: string,
-  { sitemap }: { sitemap?: boolean } = {},
+  { sitemap }: { sitemap?: boolean | undefined } = {},
 ): CheckedURI {
   // check uri type and syntax
   const {
@@ -455,7 +455,11 @@ const checkURI = function checkURI(
  */
 const checkHttpURL = function checkHttpURL(
   uri: string,
-  { https, web, sitemap }: { https?: boolean; web?: boolean; sitemap?: boolean } = {},
+  {
+    https,
+    web,
+    sitemap,
+  }: { https?: boolean | undefined; web?: boolean | undefined; sitemap?: boolean | undefined } = {},
 ): CheckedURI {
   // precheck case for sitemap only
   if (sitemap === true) {
