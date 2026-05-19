@@ -689,6 +689,15 @@ describe('#checkers', () => {
       expect(() => checkWebURL('http://[fe80::1%25eth0]/')).not.toThrow();
     });
 
+    // RFC 6874 §2: ZoneID = 1*( unreserved / pct-encoded ) — the zone must
+    // be non-empty and restricted to that set after the %25 delimiter.
+    it('should reject an empty or malformed RFC 6874 ZoneID in a URI host', () => {
+      expectThrowWithCode(() => checkURISyntax('http://[fe80::1%25]/'), 'URI_INVALID_HOST');
+      expectThrowWithCode(() => checkURI('http://[fe80::1%25]/'), 'URI_INVALID_HOST');
+      expectThrowWithCode(() => checkURI('http://[fe80::1%25e*0]/'), 'URI_INVALID_HOST');
+      expect(() => checkURI('http://[fe80::1%251]/')).not.toThrow();
+    });
+
     it('should not throw if an uri has at least a scheme and a path', () => {
       expect(() => checkURISyntax('http://example.com')).not.toThrow();
       expect(() => checkURISyntax('http://example.com/path')).not.toThrow();

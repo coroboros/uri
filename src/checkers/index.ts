@@ -45,6 +45,9 @@ export interface CheckedURISyntax extends ParsedURI {
 
 type CharChecker = (char: string, encode?: boolean) => boolean;
 
+// RFC 6874 §2: ZoneID = 1*( unreserved / pct-encoded ). Compiled once.
+const ipv6ZoneIdRegexp = /^(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2})+$/;
+
 /**
  * @func checkPercentEncoding
  *
@@ -328,12 +331,26 @@ const checkURISyntax = function checkURISyntax(uri: string): CheckedURISyntax {
   }
 
   // RFC 6874: an IPv6 zone identifier in a URI MUST use the percent-encoded
-  // "%25" delimiter; a bare "%" is invalid in URI context
+  // "%25" delimiter and the ZoneID must be a non-empty 1*( unreserved / pct-encoded )
   if (is(String, host) && host.includes(':')) {
     const zoneAt = host.indexOf('%');
 
-    if (zoneAt !== -1 && host.slice(zoneAt, zoneAt + 3) !== '%25') {
-      fail('URI_INVALID_HOST', `IPv6 zone identifier must use the '%25' delimiter, got '${host}'`);
+    if (zoneAt !== -1) {
+      const zoneId = host.slice(zoneAt + 3);
+
+      if (host.slice(zoneAt, zoneAt + 3) !== '%25') {
+        fail(
+          'URI_INVALID_HOST',
+          `IPv6 zone identifier must use the '%25' delimiter, got '${host}'`,
+        );
+      }
+
+      if (zoneId === '' || !ipv6ZoneIdRegexp.test(zoneId)) {
+        fail(
+          'URI_INVALID_HOST',
+          `IPv6 zone identifier must be a non-empty RFC 6874 ZoneID, got '${host}'`,
+        );
+      }
     }
   }
 
