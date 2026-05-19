@@ -157,11 +157,20 @@ const decodeURIString = function decodeURIString(
   // path
   const pathDecoded = decodeURIComponentString(path ?? '', { sitemap, lowercase: false });
 
-  // query
-  const queryDecoded = decodeURIComponentString(query ?? '', { sitemap, lowercase: false });
+  // RFC-3986 §5.3: an absent query/fragment (null) stays absent and a
+  // present-empty one ('') round-trips with its '?'/'#'. A non-empty
+  // component that fails to decode is ignored (mapped to null), per the
+  // documented decode contract.
+  const decodeComponent = (value: string | null): string | null => {
+    if (!is(String, value) || value === '') {
+      return value;
+    }
 
-  // fragment
-  const fragmentDecoded = decodeURIComponentString(fragment ?? '', { sitemap, lowercase: false });
+    return decodeURIComponentString(value, { sitemap, lowercase: false }) || null;
+  };
+
+  const queryDecoded = decodeComponent(query);
+  const fragmentDecoded = decodeComponent(fragment);
 
   const uridecoded = recomposeURI({
     scheme,

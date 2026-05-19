@@ -562,6 +562,28 @@ describe('#parser', () => {
       expect(parsedURI).toHaveProperty('hostPunydecoded', 'a:b');
       expect(parsedURI).toHaveProperty('authorityPunydecoded', 'a:b:8042');
     });
+
+    // RFC-3986 §5.3: a present-but-empty query/fragment ('') is distinct
+    // from an absent one (null) and parse → recompose must be idempotent.
+    it('should distinguish a present-empty query/fragment from an absent one (RFC-3986 §5.3)', () => {
+      const withEmptyQuery = parseURI('http://example.com/?');
+      expect(withEmptyQuery).toHaveProperty('query', '');
+      expect(withEmptyQuery).toHaveProperty('href', 'http://example.com/?');
+
+      const withEmptyFragment = parseURI('http://example.com/#');
+      expect(withEmptyFragment).toHaveProperty('fragment', '');
+      expect(withEmptyFragment).toHaveProperty('href', 'http://example.com/#');
+
+      const absent = parseURI('http://example.com/');
+      expect(absent).toHaveProperty('query', null);
+      expect(absent).toHaveProperty('fragment', null);
+      expect(absent).toHaveProperty('href', 'http://example.com/');
+
+      const both = parseURI('http://example.com/?#');
+      expect(both).toHaveProperty('query', '');
+      expect(both).toHaveProperty('fragment', '');
+      expect(both).toHaveProperty('href', 'http://example.com/?#');
+    });
   });
 
   describe('when using recomposeURI', () => {
@@ -858,7 +880,7 @@ describe('#parser', () => {
       expect(recomposeURI(toRecompose)).toBe('foo://u@example.com/?a=b#anchor');
     });
 
-    it('should ignore query if not at least 1 character', () => {
+    it('should emit ? for a present-empty query, omit it when null (RFC-3986 §5.3)', () => {
       const toRecompose = {
         scheme: 'foo',
         userinfo: null,
@@ -869,7 +891,7 @@ describe('#parser', () => {
         fragment: 'anchor',
       };
 
-      expect(recomposeURI(toRecompose)).toBe('foo://example.com/#anchor');
+      expect(recomposeURI(toRecompose)).toBe('foo://example.com/?#anchor');
 
       toRecompose.query = null;
       expect(recomposeURI(toRecompose)).toBe('foo://example.com/#anchor');
@@ -889,7 +911,7 @@ describe('#parser', () => {
       expect(recomposeURI(toRecompose)).toBe('foo://example.com/?a=b#anchor');
     });
 
-    it('should ignore fragment if not at least 1 character', () => {
+    it('should emit # for a present-empty fragment, omit it when null (RFC-3986 §5.3)', () => {
       const toRecompose = {
         scheme: 'foo',
         userinfo: null,
@@ -900,7 +922,7 @@ describe('#parser', () => {
         fragment: '',
       };
 
-      expect(recomposeURI(toRecompose)).toBe('foo://example.com/');
+      expect(recomposeURI(toRecompose)).toBe('foo://example.com/#');
 
       toRecompose.fragment = null;
       expect(recomposeURI(toRecompose)).toBe('foo://example.com/');
@@ -928,7 +950,7 @@ describe('#parser', () => {
         port: null,
         path: '',
         query: null,
-        fragment: '',
+        fragment: null,
       };
 
       expect(recomposeURI(toRecompose)).toBe('foo://23.71.254.72/');
@@ -942,7 +964,7 @@ describe('#parser', () => {
         port: null,
         path: '',
         query: null,
-        fragment: '',
+        fragment: null,
       };
 
       expect(recomposeURI(toRecompose)).toBe('foo://[::ffff:192.168.1.26]/');

@@ -198,19 +198,16 @@ const encodeURIString = function encodeURIString(
     lowercase: false,
   });
 
-  // query
-  const queryEncoded = encodeURIComponentString(query ?? '', {
-    sitemap,
-    type: 'query',
-    lowercase: false,
-  });
+  // query — RFC-3986 §5.3: keep an absent query (null) absent; only a
+  // present query (including '') is encoded and re-emitted with '?'
+  const queryEncoded = is(String, query)
+    ? encodeURIComponentString(query, { sitemap, type: 'query', lowercase: false })
+    : query;
 
-  // fragment
-  const fragmentEncoded = encodeURIComponentString(fragment ?? '', {
-    sitemap,
-    type: 'fragment',
-    lowercase: false,
-  });
+  // fragment — same defined/absent distinction (RFC-3986 §5.3)
+  const fragmentEncoded = is(String, fragment)
+    ? encodeURIComponentString(fragment, { sitemap, type: 'fragment', lowercase: false })
+    : fragment;
 
   const uriencoded = recomposeURI({
     scheme,

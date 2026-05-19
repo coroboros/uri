@@ -72,8 +72,10 @@ const hostToURI = function hostToURI(host: string): string {
  * 5. host, if any, must be at least 3 characters;
  * 6. userinfo will be ignored if empty;
  * 7. port will be ignored if empty or not an integer;
- * 8. query will be ignored if empty;
- * 9. fragment will be ignored if empty.
+ * 8. query is emitted when defined (a string, including ''); a null
+ *    or undefined query is omitted (RFC-3986 §5.3);
+ * 9. fragment is emitted when defined (a string, including ''); a null
+ *    or undefined fragment is omitted (RFC-3986 §5.3).
  *
  * Support:
  * - IPv4 and IPv6.
@@ -134,11 +136,13 @@ const recomposeURI = function recomposeURI(components?: URIComponents): string {
     uri += path;
   }
 
-  if (is(String, query) && query.length > 0) {
+  // RFC-3986 §5.3: emit the delimiter whenever the component is defined,
+  // including the empty string (a defined-empty query/fragment)
+  if (is(String, query)) {
     uri += `?${query}`;
   }
 
-  if (is(String, fragment) && fragment.length > 0) {
+  if (is(String, fragment)) {
     uri += `#${fragment}`;
   }
 
@@ -313,8 +317,10 @@ const parseURI = function parseURI(uri: string): ParsedURI {
   }
 
   // format query and fragment
-  const query = is(String, queryParsed) && queryParsed.length > 0 ? queryParsed : null;
-  const fragment = is(String, fragmentParsed) && fragmentParsed.length > 0 ? fragmentParsed : null;
+  // RFC-3986 §5.3: a present-but-empty query/fragment ('' from a bare '?'
+  // or '#') is distinct from an absent one (null) and must round-trip
+  const query = is(String, queryParsed) ? queryParsed : null;
+  const fragment = is(String, fragmentParsed) ? fragmentParsed : null;
 
   // pathqf: recompose path + query + fragment if any
   // using valueOf to avoid potential String objects mutation with parsed.path
