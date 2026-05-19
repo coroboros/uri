@@ -10,7 +10,7 @@
 Parses any URI per RFC-3986, including IDNs via Punycode. Validates IPs, domains, URIs, HTTP(S) URLs, and Sitemap URLs. Encodes and decodes URI strings and components.
 
 [![npm](https://img.shields.io/npm/v/@coroboros/uri?style=flat-square&color=000000)](https://www.npmjs.com/package/@coroboros/uri)
-[![branch](https://img.shields.io/badge/branch-stable-000000?style=flat-square)](https://github.com/coroboros/uri)
+[![ci](https://img.shields.io/github/actions/workflow/status/coroboros/uri/ci.yml?branch=main&style=flat-square&label=ci&color=000000)](https://github.com/coroboros/uri/actions/workflows/ci.yml)
 [![license](https://img.shields.io/badge/license-MIT-000000?style=flat-square)](https://opensource.org/licenses/MIT)
 [![stars](https://img.shields.io/github/stars/coroboros/uri?style=flat-square&label=stars&color=000000)](https://github.com/coroboros/uri)
 [![coroboros.com](https://img.shields.io/badge/coroboros.com-000000?style=flat-square&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiLz48cGF0aCBkPSJNMiAxMmgyME0xMiAyYTE1LjMgMTUuMyAwIDAgMSA0IDEwIDE1LjMgMTUuMyAwIDAgMS00IDEwIDE1LjMgMTUuMyAwIDAgMS00LTEwIDE1LjMgMTUuMyAwIDAgMSA0LTEweiIvPjwvc3ZnPg==)](https://coroboros.com)
@@ -25,6 +25,7 @@ Parses any URI per RFC-3986, including IDNs via Punycode. Validates IPs, domains
 - [Usage](#usage)
 - [API](#api)
 - [Errors](#errors)
+- [Compliance](#compliance)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -367,6 +368,75 @@ recomposeURI({
   query: '',
   fragment: '',
 }); // 'foo://[fe80::7:8%eth0]/over/there'
+```
+
+### resolveURI(base, reference)
+
+Resolve a URI reference against a base URI.
+
+Implements the **RFC-3986 §5.2** algorithm: the §5.2.2 strict transform, the §5.2.3 merge, and §5.2.4 remove_dot_segments, then recomposes the target per §5.3.
+
+The empty string is returned if the base is not absolute or an argument is not a string.
+
+**Rules**:
+
+1. base must be an absolute URI — a scheme is required (**RFC-3986 §5.2.1**);
+2. reference may be absolute or relative;
+3. both arguments must be strings.
+
+**Note**:
+
+- the strict algorithm is used: a reference scheme equal to the base scheme is not ignored.
+
+<br/>
+
+**Based on**:
+
+- __<a href="https://tools.ietf.org/html/rfc3986#section-5.2" target="_blank">RFC-3986 §5.2</a>__.
+
+<br/>
+
+- `base`* **<String\>** An absolute base URI.
+- `reference`* **<String\>** The URI reference to resolve.
+- Returns: **<String\>**
+
+<br/>
+
+**Examples**:
+
+```javascript
+resolveURI('http://a/b/c/d;p?q', '../../g'); // 'http://a/g'
+
+resolveURI('https://example.com/a/b', './c?x#y'); // 'https://example.com/a/c?x#y'
+
+resolveURI('/not-absolute', 'g'); // '' (base is not absolute)
+```
+
+### removeDotSegments(path)
+
+Remove the special `.` and `..` complete path segments from a path.
+
+Implements the **RFC-3986 §5.2.4** algorithm verbatim.
+
+<br/>
+
+**Based on**:
+
+- __<a href="https://tools.ietf.org/html/rfc3986#section-5.2.4" target="_blank">RFC-3986 §5.2.4</a>__.
+
+<br/>
+
+- `path`* **<String\>** The path to normalize.
+- Returns: **<String\>**
+
+<br/>
+
+**Examples**:
+
+```javascript
+removeDotSegments('/a/b/c/./../../g'); // '/a/g'
+
+removeDotSegments('mid/content=5/../6'); // 'mid/6'
 ```
 
 ### isDomainLabel(label)
@@ -925,7 +995,7 @@ Encode an URI string according to **RFC-3986** with basic checking.
 - native function `encodeURI` also encodes scheme and host that cannot have
   percend-encoded characters;
 - characters that should not be percent-encoded in **RFC-3986** are `[]` to represent IPv6 host;
-- to stay fully **RFC-3986** compliant, scheme and host are put in lowercase.
+- by default only the scheme and host are lowercased (**RFC-3986 §6.2.2.1**); the `lowercase` option additionally lowercases the path, query and fragment, which are case-sensitive — use it only for Sitemap or convenience purposes, not as RFC normalization.
 
 <br/>
 
@@ -999,7 +1069,7 @@ Uses __[a fixed encodeURI function](#encodeuristringuri-options)__ to be **RFC-3
 - native function `encodeURI` also encodes scheme and host that cannot have
   percend-encoded characters;
 - characters that should not be percent-encoded in **RFC-3986** are `[]` to represent IPv6 host;
-- to stay fully **RFC-3986** compliant, scheme and host are put in lowercase.
+- by default only the scheme and host are lowercased (**RFC-3986 §6.2.2.1**); the `lowercase` option additionally lowercases the path, query and fragment, which are case-sensitive — use it only for Sitemap or convenience purposes, not as RFC normalization.
 
 <br/>
 
@@ -1079,7 +1149,7 @@ Uses __[a fixed encodeURI function](#encodeuristringuri-options)__ to be **RFC-3
 - native function `encodeURI` also encodes scheme and host that cannot have
   percend-encoded characters;
 - characters that should not be percent-encoded in **RFC-3986** are `[]` to represent IPv6 host;
-- to stay fully **RFC-3986** compliant, scheme and host are put in lowercase.
+- by default only the scheme and host are lowercased (**RFC-3986 §6.2.2.1**); the `lowercase` option additionally lowercases the path, query and fragment, which are case-sensitive — use it only for Sitemap or convenience purposes, not as RFC normalization.
 
 <br/>
 
@@ -1188,7 +1258,7 @@ Decode an URI string according to **RFC-3986** with basic checking.
 
 - if one of `userinfo`, `path`, `query` or `fragment` component cannot be decoded, it will be ignored;
 - native function `decodeURI` does not support IDNs and cannot properly work with `encodeURI` since the function is based on an outdated standard;
-- to stay fully **RFC-3986** compliant, scheme and host are put in lowercase;
+- by default only the scheme and host are lowercased (**RFC-3986 §6.2.2.1**); the `lowercase` option additionally lowercases the path, query and fragment, which are case-sensitive — use it only for Sitemap or convenience purposes, not as RFC normalization;
 - to only use with [encodeURIString](#encodeuristringuri-options).
 
 <br/>
@@ -1255,7 +1325,7 @@ Uses __[a fixed decodeURI function](#decodeuristringuri-options)__ to be **RFC-3
 
 - if one of `userinfo`, `path`, `query` or `fragment` component cannot be decoded, it will be ignored;
 - native function `decodeURI` does not support IDNs and cannot properly work with `encodeURI` since the function is based on an outdated standard;
-- to stay fully **RFC-3986** compliant, scheme and host are put in lowercase;
+- by default only the scheme and host are lowercased (**RFC-3986 §6.2.2.1**); the `lowercase` option additionally lowercases the path, query and fragment, which are case-sensitive — use it only for Sitemap or convenience purposes, not as RFC normalization;
 - to only use with [encodeWebURL](#encodeweburluri-options).
 
 <br/>
@@ -1328,7 +1398,7 @@ Uses __[a fixed decodeURI function](#decodeuristringuri-options)__ to be **RFC-3
 
 - if one of `userinfo`, `path`, `query` or `fragment` component cannot be decoded, it will be ignored;
 - native function `decodeURI` does not support IDNs and cannot properly work with `encodeURI` since the function is based on an outdated standard;
-- to stay fully **RFC-3986** compliant, scheme and host are put in lowercase;
+- by default only the scheme and host are lowercased (**RFC-3986 §6.2.2.1**); the `lowercase` option additionally lowercases the path, query and fragment, which are case-sensitive — use it only for Sitemap or convenience purposes, not as RFC normalization;
 - to only use with [encodeSitemapURL](#encodesitemapurluri).
 
 <br/>
@@ -1515,6 +1585,31 @@ Errors emitted by *@coroboros/uri* are native URIError with an additional *code*
   </tr>
 
 </table>
+
+## Compliance
+
+*@coroboros/uri* implements:
+
+- **RFC-3986** — generic URI syntax: parse, recompose, reference resolution (§5.2), percent-encoding, and validation.
+- **RFC-3987** — IDNs via Punycode, through Node's `node:url` (`domainToASCII` / `domainToUnicode`).
+- **RFC 6874** — IPv6 zone identifiers in a URI.
+- **RFC 1034** / **RFC 1123** — domain name rules.
+- **sitemaps.org** — the Sitemap protocol for Sitemap URLs.
+
+**Behavior worth knowing**:
+
+- a present-but-empty query or fragment (a bare `?` or `#`) is preserved and round-trips, distinct from an absent one (**RFC-3986 §5.3**);
+- a port must be a string of ASCII digits (**RFC-3986 §3.2.3**) — values like `0x1F` are rejected;
+- `userinfo` is delimited by the last `@`, and a non-IPv6 host/port by the last `:` (**RFC-3986 §3.2**);
+- percent-encoding hex is case-insensitive: `%3a` and `%3A` are both accepted (**RFC-3986 §6.2.2.1**);
+- inside a URI, an IPv6 zone identifier must use the `%25` delimiter (**RFC 6874**); the standalone `isIPv6` validator stays lenient;
+- `encodeSitemapURL` escapes all five XML entities `& ' " < >`, and a Sitemap URL must be shorter than 2,048 characters (sitemaps.org). For example, `encodeSitemapURL('http://example.com/a&b<c>d')` returns `'http://example.com/a&amp;b&lt;c&gt;d'`.
+
+**Non-goals**:
+
+- this is a strict **RFC-3986** toolkit, not a WHATWG URL parser — it does not apply WHATWG host/IPv4 leniency;
+- it does not canonicalize IPv6 addresses to **RFC 5952** form;
+- the `lowercase` option lowercases the entire input including the path, query and fragment, which are case-sensitive per **RFC-3986 §6.2.2.1** — so `lowercase` is a Sitemap/convenience option, not RFC normalization. By default only the scheme and host are lowercased, which is the RFC-compliant behavior.
 
 ## Contributing
 
