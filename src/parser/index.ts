@@ -6,7 +6,7 @@
  * - parseURI(uri) -> Object
  */
 import { maxPortInteger, minPortInteger } from '../config/index.js';
-import { int } from '../helpers/cast.js';
+import { int, isPort } from '../helpers/cast.js';
 import { exists, is } from '../helpers/object.js';
 import { isIPv6 } from '../ip/index.js';
 import { punycode, punydecode } from '../punycode/index.js';
@@ -72,8 +72,10 @@ const hostToURI = function hostToURI(host: string): string {
  * 5. host, if any, must be at least 3 characters;
  * 6. userinfo will be ignored if empty;
  * 7. port will be ignored if empty or not an integer;
- * 8. query will be ignored if empty;
- * 9. fragment will be ignored if empty.
+ * 8. query is emitted when defined (a string, including ''); a null
+ *    or undefined query is omitted (RFC-3986 §5.3);
+ * 9. fragment is emitted when defined (a string, including ''); a null
+ *    or undefined fragment is omitted (RFC-3986 §5.3).
  *
  * Support:
  * - IPv4 and IPv6.
@@ -112,7 +114,11 @@ const recomposeURI = function recomposeURI(components?: URIComponents): string {
 
     uri += hostToURI(host);
 
-    if (exists(port) && int(port, { ge: minPortInteger, le: maxPortInteger }) !== undefined) {
+    if (
+      exists(port) &&
+      isPort(port) &&
+      int(port, { ge: minPortInteger, le: maxPortInteger }) !== undefined
+    ) {
       uri += `:${port}`;
     }
   } else {
@@ -130,11 +136,13 @@ const recomposeURI = function recomposeURI(components?: URIComponents): string {
     uri += path;
   }
 
-  if (is(String, query) && query.length > 0) {
+  // RFC-3986 §5.3: emit the delimiter whenever the component is defined,
+  // including the empty string (a defined-empty query/fragment)
+  if (is(String, query)) {
     uri += `?${query}`;
   }
 
-  if (is(String, fragment) && fragment.length > 0) {
+  if (is(String, fragment)) {
     uri += `#${fragment}`;
   }
 
@@ -182,6 +190,7 @@ const parseURI = function parseURI(uri: string): ParsedURI {
   }
 
   // extract uri components from RegExp
+  /* v8 ignore next -- unreachable []: the all-optional Appendix-B regexp always matches a non-empty string */
   const [, scheme, authorityParsed, path, queryParsed, fragmentParsed] = uri.match(uriRegexp) ?? [];
 
   // scheme is required and must be a not empty string or this is not an uri
@@ -200,15 +209,18 @@ const parseURI = function parseURI(uri: string): ParsedURI {
   if (is(String, authorityParsed)) {
     let hostAndPort: string | null = null;
 
-    [userinfo = null, hostAndPort = null] = authorityParsed.split('@');
+    // RFC-3986 §3.2.1: userinfo is delimited by the last '@' before the host
+    const userinfoEnd = authorityParsed.lastIndexOf('@');
 
-    // authority had no '@' and no userinfo can be extracted
-    if (!exists(hostAndPort) && exists(userinfo)) {
-      hostAndPort = userinfo;
-      userinfo = null;
+    if (userinfoEnd === -1) {
+      hostAndPort = authorityParsed;
+    } else {
+      userinfo = authorityParsed.slice(0, userinfoEnd);
+      hostAndPort = authorityParsed.slice(userinfoEnd + 1);
     }
 
     // try to extract host and port only if any
+    /* v8 ignore next -- unreachable false branch: hostAndPort is always an assigned string after the authority split */
     if (is(String, hostAndPort)) {
       // detect IPv6 here first
       const ipv6Match = hostAndPort.match(ipv6Regexp);
@@ -219,14 +231,23 @@ const parseURI = function parseURI(uri: string): ParsedURI {
       if (Array.isArray(ipv6Match)) {
         [, hostParsed = null, portToCast = null] = ipv6Match;
       } else {
-        // not an ipv6
-        [hostParsed = null, portToCast = null] = hostAndPort.split(':');
+        // not an ipv6 — RFC-3986 §3.2.2/§3.2.3: port follows the last ':'
+        const portStart = hostAndPort.lastIndexOf(':');
+
+        if (portStart === -1) {
+          hostParsed = hostAndPort;
+        } else {
+          hostParsed = hostAndPort.slice(0, portStart);
+          portToCast = hostAndPort.slice(portStart + 1);
+        }
       }
 
       // hostPunydecoded should be the host in Unicode, host its Punycode value
+      /* v8 ignore start -- unreachable null branch: the ipv6 regexp's required capture means hostParsed is always a string here */
       const hostLowerCase = is(String, hostParsed) ? hostParsed.toLowerCase() : null;
       const toASCII = punycode(hostLowerCase ?? '');
       const toUnicode = punydecode(hostLowerCase ?? '');
+      /* v8 ignore stop */
 
       // host parsed was in Unicode
       if (hostLowerCase !== toASCII) {
@@ -250,13 +271,19 @@ const parseURI = function parseURI(uri: string): ParsedURI {
       // necessary to handle possible port errors when checking uri
       // port is a valid integer or we keep its initial value to be aware of the error
       // here we also don't check wrong range for the same reason
-      port = int(portToCast) || portToCast;
+      // RFC-3986 §3.2.3: a non-digit port (0x1F, 1e3, ...) is kept raw, not
+      // coerced by Number(), so checkURI can flag it as URI_INVALID_PORT
+      port =
+        is(String, portToCast) && portToCast.length > 0 && !isPort(portToCast)
+          ? portToCast
+          : int(portToCast) || portToCast;
 
       // recompose authority with punycode ASCII and Unicode serialization of the host
       // userinfo@host:port
       // we still want to know the original host and authority provided
       // to check possible uri errors: a null host with a hostPunydecoded filled
       // means uri parsed had an invalid host name
+      /* v8 ignore next -- unreachable false branch: hostPunydecoded is always an assigned string in this block */
       if (exists(hostPunydecoded)) {
         authorityPunydecoded = '';
 
@@ -295,11 +322,14 @@ const parseURI = function parseURI(uri: string): ParsedURI {
   }
 
   // format query and fragment
-  const query = is(String, queryParsed) && queryParsed.length > 0 ? queryParsed : null;
-  const fragment = is(String, fragmentParsed) && fragmentParsed.length > 0 ? fragmentParsed : null;
+  // RFC-3986 §5.3: a present-but-empty query/fragment ('' from a bare '?'
+  // or '#') is distinct from an absent one (null) and must round-trip
+  const query = is(String, queryParsed) ? queryParsed : null;
+  const fragment = is(String, fragmentParsed) ? fragmentParsed : null;
 
   // pathqf: recompose path + query + fragment if any
   // using valueOf to avoid potential String objects mutation with parsed.path
+  /* v8 ignore next -- unreachable null branch: the Appendix-B regexp always captures a string path */
   parsed.pathqf = is(String, path) ? path.valueOf() : null;
 
   if (is(String, parsed.pathqf)) {
@@ -320,6 +350,7 @@ const parseURI = function parseURI(uri: string): ParsedURI {
   parsed.host = host;
   parsed.hostPunydecoded = hostPunydecoded;
   parsed.port = port;
+  /* v8 ignore next -- unreachable: the Appendix-B regexp always captures a string path */
   parsed.path = path ?? null;
   parsed.query = query;
   parsed.fragment = fragment;

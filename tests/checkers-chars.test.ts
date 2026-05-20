@@ -476,6 +476,17 @@ describe('#checkers chars', () => {
       }
     });
 
+    // RFC-3986 §2.1 / §6.2.2.1: HEXDIG is case-insensitive (%3a ≡ %3A).
+    // A validator MUST accept lowercase a-f; rejecting them rejects valid input.
+    it('should accept lowercase hex digits a-f (RFC-3986 §6.2.2.1)', () => {
+      for (const char of 'abcdef') {
+        expect(isPercentEncodingChar(char)).toBe(true);
+      }
+      for (const char of 'ABCDEF0123456789') {
+        expect(isPercentEncodingChar(char)).toBe(true);
+      }
+    });
+
     it('should return false if a char does not exist', () => {
       expect(isPercentEncodingChar()).toBe(false);
       expect(isPercentEncodingChar(undefined)).toBe(false);

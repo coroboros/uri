@@ -231,7 +231,7 @@ describe('#encoders', () => {
     it('should return a string with specific escaped and percent-encoded characters when sitemap is true', () => {
       expect(encodeURIComponentString(AZ, { sitemap: true })).toBe(az);
       expect(encodeURIComponentString(disallowed, { sitemap: true })).toBe(
-        '%5C%5E%60%7B%7C%7D%3C%3E',
+        '%5C%5E%60%7B%7C%7D&lt;&gt;',
       );
       expect(encodeURIComponentString("&'*", { sitemap: true })).toBe('&amp;&apos;%2A');
       expect(encodeURIComponentString(disallowedOtherChars, { sitemap: true })).toBe(
@@ -1122,9 +1122,9 @@ describe('#encoders', () => {
 
     it('should return a string with percent-encoded characters if not allowed, by default', () => {
       expect(encodeSitemapURL(`http://example.com/${disallowed}`)).toBe(
-        'http://example.com/%5C%5E%60%7B%7C%7D%3C%3E',
+        'http://example.com/%5C%5E%60%7B%7C%7D&lt;&gt;',
       );
-      expect(encodeSitemapURL('http://example.com/<>')).toBe('http://example.com/%3C%3E');
+      expect(encodeSitemapURL('http://example.com/<>')).toBe('http://example.com/&lt;&gt;');
       expect(encodeSitemapURL(`http://example.com/${disallowedOtherChars}`)).toBe(
         'http://example.com/%E2%82%AC%C2%B0%C3%A9%C3%B9%C3%A8%C3%A0%C3%A7%20%C2%A7%C2%A3',
       );
@@ -1175,6 +1175,13 @@ describe('#encoders', () => {
       expect(encodeSitemapURL('http://example.com/pâth')).toBe('http://example.com/p%C3%A2th');
       expect(encodeSitemapURL('http://example.com/there?a=5&b=11')).toBe(
         'http://example.com/there?a=5&amp;b=11',
+      );
+    });
+
+    // sitemaps.org: all five XML entities must be escaped — &, ', ", >, <
+    it('should escape all five sitemap XML entities (sitemaps.org)', () => {
+      expect(encodeSitemapURL('http://example.com/a&b\'c"d<e>f')).toBe(
+        'http://example.com/a&amp;b&apos;c&quot;d&lt;e&gt;f',
       );
     });
 

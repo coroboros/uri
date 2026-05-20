@@ -3,6 +3,7 @@
 .wrangler/
 .dev.vars
 .claude/settings.local.json
+.claude/output/
 CLAUDE.local.md
 dist
 *.zip

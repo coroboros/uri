@@ -5,12 +5,12 @@
 <!-- omit in toc -->
 # @coroboros/uri
 
-**RFC-3986 compliant, zero-dependency URI toolkit for Node.js.**
+**RFC-3986 URI toolkit for Node.js. IDN (RFC-3987), IPv6 zone identifiers (RFC 6874), Sitemap protocol. Zero dependencies.**
 
-Parses any URI per RFC-3986, including IDNs via Punycode. Validates IPs, domains, URIs, HTTP(S) URLs, and Sitemap URLs. Encodes and decodes URI strings and components.
+Parses URIs per **RFC-3986 Appendix B**. Recomposes per §5.3. Resolves references per §5.2. Validates IPs, domains (**RFC 1034 / 1123**), HTTP(S) URLs, and Sitemap URLs. Encodes and decodes URI strings and components.
 
 [![npm](https://img.shields.io/npm/v/@coroboros/uri?style=flat-square&color=000000)](https://www.npmjs.com/package/@coroboros/uri)
-[![branch](https://img.shields.io/badge/branch-stable-000000?style=flat-square)](https://github.com/coroboros/uri)
+[![ci](https://img.shields.io/github/actions/workflow/status/coroboros/uri/ci.yml?branch=main&style=flat-square&label=ci&color=000000)](https://github.com/coroboros/uri/actions/workflows/ci.yml)
 [![license](https://img.shields.io/badge/license-MIT-000000?style=flat-square)](https://opensource.org/licenses/MIT)
 [![stars](https://img.shields.io/github/stars/coroboros/uri?style=flat-square&label=stars&color=000000)](https://github.com/coroboros/uri)
 [![coroboros.com](https://img.shields.io/badge/coroboros.com-000000?style=flat-square&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiLz48cGF0aCBkPSJNMiAxMmgyME0xMiAyYTE1LjMgMTUuMyAwIDAgMSA0IDEwIDE1LjMgMTUuMyAwIDAgMS00IDEwIDE1LjMgMTUuMyAwIDAgMS00LTEwIDE1LjMgMTUuMyAwIDAgMSA0LTEweiIvPjwvc3ZnPg==)](https://coroboros.com)
@@ -23,8 +23,10 @@ Parses any URI per RFC-3986, including IDNs via Punycode. Validates IPs, domains
 - [Requirements](#requirements)
 - [Install](#install)
 - [Usage](#usage)
+- [Compliance](#compliance)
 - [API](#api)
 - [Errors](#errors)
+- [Limitations](#limitations)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -38,12 +40,15 @@ Parses any URI per RFC-3986, including IDNs via Punycode. Validates IPs, domains
 ```bash
 pnpm add @coroboros/uri
 ```
+
 ```bash
 npm install @coroboros/uri
 ```
+
 ```bash
 yarn add @coroboros/uri
 ```
+
 ```bash
 bun add @coroboros/uri
 ```
@@ -53,149 +58,216 @@ bun add @coroboros/uri
 ```ts
 // ESM (recommended)
 import { parseURI, checkHttpsURL, encodeWebURL } from '@coroboros/uri';
-
-parseURI('foo://user:pass@xn--fiq228c.com:8042/over/there?name=ferret#nose');
-checkHttpsURL('https://example.com/path?q=1#x');
-encodeWebURL('https://www.中文.com./Over There?a=B#Anchôr');
 ```
 
 ```js
 // CommonJS
-const { parseURI } = require('@coroboros/uri');
+const { parseURI, checkHttpsURL, encodeWebURL } = require('@coroboros/uri');
 ```
 
-## API
+```ts
+import { parseURI, checkHttpsURL, encodeWebURL } from '@coroboros/uri';
 
-### punycode(domain)
+// Parse — get every RFC-3986 component
+parseURI('foo://user:pass@xn--fiq228c.com:8042/over/there?name=ferret#nose');
+// { scheme: 'foo', host: 'xn--fiq228c.com', hostPunydecoded: '中文.com', port: 8042, … }
 
-Returns the Punycode ASCII serialization of the domain. If domain is an invalid domain, the empty string is returned.
+// Validate strictly — throws URIError with a stable code on invalid input
+try {
+  const url = checkHttpsURL('https://example.com/path?q=1#x');
+  url.valid; // true
+} catch (err) {
+  // err.code is one of the documented codes (see [Errors](#errors))
+}
 
-**Note**:
-
-- native function `url.domainToASCII` does not support IPv6 only IPv4;
-- native function `url.domainToASCII` throws if no domain is provided or returns `null`, `undefined`, `nan` for `null`, `undefined` or `NaN` values which is not what to be expected.
-
-<br/>
-
-- `domain` **<String\>**
-- Returns: **<String\>**
-
-<br/>
-
-**Examples**:
-
-```javascript
-punycode(); // ''
-punycode('a.b.c.d.e.fg'); // 'a.b.c.d.e.fg'
-punycode('xn--iñvalid.com'); // ''
-punycode('中文.com'); // 'xn--fiq228c.com'
-punycode('xn--fiq228c.com'); // 'xn--fiq228c.com'
-punycode('2001:db8:85a3:8d3:1319:8a2e:370:7348'); // '2001:db8:85a3:8d3:1319:8a2e:370:7348'
-punycode('127.0.0.1'); // '127.0.0.1'
-punycode(undefined|null|NaN); // ''
+// Encode — RFC-3986 compliant, IDN-aware, sub-2048-char HTTP(S)
+encodeWebURL('https://www.中文.com./Over There?a=B#Anchôr');
+// 'https://www.xn--fiq228c.com./Over%20There?a=B#Anch%C3%B4r'
 ```
 
-### punydecode(domain)
+## Compliance
 
-Returns the Unicode serialization of the domain. If domain is an invalid domain, the empty string is returned.
+`@coroboros/uri` implements:
 
-**Note**:
+- **RFC-3986** — generic URI syntax: parse (Appendix B), recompose (§5.3), reference resolution (§5.2), percent-encoding (§2.1, §6.2.2.1), and character validation (§3.1–§3.5).
+- **RFC-3987** — Internationalized Domain Names via Punycode, through Node's `node:url` (`domainToASCII` / `domainToUnicode`).
+- **RFC 6874 §2** — IPv6 zone identifiers inside a URI: the `%25` delimiter and `ZoneID = 1*( unreserved / pct-encoded )` grammar.
+- **RFC 1034 / RFC 1123** — domain-name rules: label length, character set, label separation.
+- **sitemaps.org** — the Sitemap protocol: required XML-entity escaping and the 2,048-character URL ceiling.
 
-- native function `url.domainToUnicode` does not support IPv6 only IPv4;
-- native function `url.domainToUnicode` throws if no domain is provided or returns `null`, `undefined`, `nan` for `null`, `undefined` or `NaN` values which is not what to be expected.
+See [`bench/baseline.md`](bench/baseline.md) for performance numbers vs native `URL` / `URL.canParse`. The toolkit trades raw speed for RFC-3986 fidelity — full per-character validation, IDN handling, RFC 6874 zone identifiers, and explicit coded errors.
 
-<br/>
-
-- `domain` **<String\>**
-- Returns: **<String\>**
-
-<br/>
-
-**Examples**:
-
-```javascript
-punydecode(); // ''
-punydecode('a.b.c.d.e.fg'); // 'a.b.c.d.e.fg'
-punydecode('xn--iñvalid.com'); // ''
-punydecode('xn--fiq228c.com'); // '中文.com'
-punydecode('中文.com'); // '中文.com'
-punydecode('2001:db8:85a3:8d3:1319:8a2e:370:7348'); // '2001:db8:85a3:8d3:1319:8a2e:370:7348'
-punydecode('127.0.0.1'); // '127.0.0.1'
-punydecode(undefined|null|NaN); // ''
-```
-
-### parseURI(uri)
-
-Parse a string to get URI components.
-
-**Support**:
-
-- IPv4 and IPv6 hosts;
-- Internationalized Domain Name (IDN).
-
-**Note**:
-
-- RegExp from __<a href="https://tools.ietf.org/html/rfc3986#appendix-B" target="_blank">RFC-3986</a>__;
-- scheme and host strings will always be put in lowercase once parsed, as specified in **RFC-3986**;
-- authority and its components will be put at null values if authority parsed is missing or empty;
-- **prefer using [checkURI](#checkuriuri) to parse and fully check an URI**.
-
-<br/>
-
-**Generic syntax**:
+**Generic URI syntax**
 
 ![URI Syntax](assets/uri-syntax.png "URI Syntax")
 
-<br/>
-
-**Example URIs**:
+**Example URIs**
 
 ![RFC-3986](assets/rfc-3986.png "RFC-3986")
 
-<br/>
+## API
 
-**Based on**:
+### Types
 
-- __<a href="https://tools.ietf.org/html/rfc3986" target="_blank">RFC-3986</a>__.
+<details>
+<summary><em>ParsedURI</em></summary>
 
-<br/>
+<br>
 
-- `uri` **<String\>**
-- Returns: **<Object\>**
-  - `scheme` **<String\>** The URI scheme. *Default*: `null`
-  - `authority` **<String\>** The URI authority with the Punycode ASCII serialization of the domain. *Default*: `null`
-  - `authorityPunydecoded` **<String\>** The URI authority with the Unicode serialization of the domain. *Default*: `null`
-  - `userinfo` **<String\>** The URI userinfo. *Default*: `null`
-  - `host` **<String\>** The URI authority's host with the Punycode ASCII serialization of the domain. *Default*: `null`
-  - `hostPunydecoded` **<String\>** The URI authority's host with the Unicode serialization of the domain. *Default*: `null`
-  - `port` **<Number\>** || **<String\>** The URI authority's port. A string if not able to be parsed in an integer. *Default*: `null`
-  - `path` **<String\>** The URI path. *Default*: `null`
-  - `pathqf` **<String\>** The URI path, query and fragment. *Default*: `null`
-  - `query` **<String\>** The URI query. *Default*: `null`
-  - `fragment` **<String\>** The URI fragment. *Default*: `null`
-  - `href` **<String\>** The URI recomposed. See __[recomposeURI](#recomposeuricomponents)__. *Default*: `null`
+Return shape of [`parseURI`](#parsing).
 
-<br/>
+```ts
+interface ParsedURI {
+  scheme: string | null;
+  authority: string | null;
+  authorityPunydecoded: string | null;
+  userinfo: string | null;
+  host: string | null;
+  hostPunydecoded: string | null;
+  port: number | string | null;
+  path: string | null;
+  pathqf: string | null;
+  query: string | null;
+  fragment: string | null;
+  href: string | null;
+}
+```
 
-**Examples**:
+Fields default to `null` when the corresponding URI part is missing. `port` is a `number` when parseable as an integer, a `string` otherwise.
 
-```javascript
-parseURI();
-// {
-//   scheme: null,
-//   authority: null,
-//   authorityPunydecoded: null,
-//   userinfo: null,
-//   host: null,
-//   hostPunydecoded: null,
-//   port: null,
-//   path: null,
-//   pathqf: null,
-//   query: null,
-//   fragment: null,
-//   href: null,
-// }
+</details>
 
+<details>
+<summary><em>URIComponents</em></summary>
+
+<br>
+
+Input shape of [`recomposeURI`](#parsing). Every field is optional; `scheme` and `path` are required at runtime.
+
+```ts
+interface URIComponents {
+  scheme?: string | null;
+  userinfo?: string | null;
+  host?: string | null;
+  port?: number | string | null;
+  path?: string | null;
+  query?: string | null;
+  fragment?: string | null;
+}
+```
+
+</details>
+
+<details>
+<summary><em>CheckedURI</em></summary>
+
+<br>
+
+Return shape of every [`check*`](#checkers) function on success — `ParsedURI` extended with a `valid: true` discriminant.
+
+```ts
+interface CheckedURI extends ParsedURI {
+  valid: true;
+}
+```
+
+</details>
+
+### Punycode
+
+<details>
+<summary><em>punycode(domain)</em></summary>
+
+<br>
+
+Returns the Punycode ASCII serialization of a domain. Returns the empty string when the input is not a valid domain.
+
+**Parameters**
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `domain` | `string` | *(required)* | The domain to serialize. |
+
+**Returns** — `string`. The ASCII form (or `''` on invalid input).
+
+**Notes**
+
+- Wraps Node's `url.domainToASCII` and normalizes the error case: the native function throws when called without an argument and returns `'null'` / `'undefined'` / `'nan'` for the corresponding non-domain inputs.
+- IPv6 literals are passed through unchanged (the native function rejects them).
+
+**Examples**
+
+```ts
+punycode();                                       // ''
+punycode('a.b.c.d.e.fg');                         // 'a.b.c.d.e.fg'
+punycode('xn--iñvalid.com');                      // ''
+punycode('中文.com');                              // 'xn--fiq228c.com'
+punycode('xn--fiq228c.com');                      // 'xn--fiq228c.com'
+punycode('2001:db8:85a3:8d3:1319:8a2e:370:7348'); // '2001:db8:85a3:8d3:1319:8a2e:370:7348'
+punycode('127.0.0.1');                            // '127.0.0.1'
+```
+
+</details>
+
+<details>
+<summary><em>punydecode(domain)</em></summary>
+
+<br>
+
+Returns the Unicode serialization of a domain. Returns the empty string when the input is not a valid domain.
+
+**Parameters**
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `domain` | `string` | *(required)* | The domain to deserialize. |
+
+**Returns** — `string`. The Unicode form (or `''` on invalid input).
+
+**Notes**
+
+- Wraps Node's `url.domainToUnicode` and normalizes the same error edges as [`punycode`](#punycodedomain).
+
+**Examples**
+
+```ts
+punydecode();                                       // ''
+punydecode('xn--fiq228c.com');                      // '中文.com'
+punydecode('中文.com');                              // '中文.com'
+punydecode('xn--iñvalid.com');                      // ''
+punydecode('2001:db8:85a3:8d3:1319:8a2e:370:7348'); // '2001:db8:85a3:8d3:1319:8a2e:370:7348'
+punydecode('127.0.0.1');                            // '127.0.0.1'
+```
+
+</details>
+
+### Parsing
+
+<details>
+<summary><em>parseURI(uri)</em></summary>
+
+<br>
+
+Parses a URI into its **RFC-3986 Appendix B** components, with IPv4/IPv6 host support and IDN (Punycode) awareness.
+
+**Parameters**
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `uri` | `string` | *(required)* | The URI string to parse. |
+
+**Returns** — [`ParsedURI`](#types).
+
+**Notes**
+
+- Scheme and host are lowercased per **RFC-3986 §6.2.2.1**.
+- Authority and its components are `null` when the authority is absent or empty.
+- A present-but-empty query or fragment (`?` or `#` with nothing after) is preserved as `''`, distinct from a missing one (`null`).
+- For strict validation, prefer [`checkURI`](#checkers).
+
+**Examples**
+
+```ts
 parseURI('foo://user:pass@xn--fiq228c.com:8042/over/there?name=ferret#nose');
 // {
 //   scheme: 'foo',
@@ -212,132 +284,45 @@ parseURI('foo://user:pass@xn--fiq228c.com:8042/over/there?name=ferret#nose');
 //   href: 'foo://user:pass@xn--fiq228c.com:8042/over/there?name=ferret#nose',
 // }
 
-parseURI('foo://user:pass@中文.com:80g42/over/there?name=ferret#nose');
-// {
-//   scheme: 'foo',
-//   authority: 'user:pass@xn--fiq228c.com:80g42',
-//   authorityPunydecoded: 'user:pass@中文.com:80g42',
-//   userinfo: 'user:pass',
-//   host: 'xn--fiq228c.com',
-//   hostPunydecoded: '中文.com',
-//   port: '80g42',
-//   path: '/over/there',
-//   pathqf: '/over/there?name=ferret#nose',
-//   query: 'name=ferret',
-//   fragment: 'nose',
-//   href: 'foo://user:pass@xn--fiq228c.com:80g42/over/there?name=ferret#nose',
-// }
-
 parseURI('urn:isbn:0-486-27557-4');
-// {
-//   scheme: 'urn',
-//   authority: null,
-//   authorityPunydecoded: null,
-//   userinfo: null,
-//   host: null,
-//   hostPunydecoded: null,
-//   port: null,
-//   path: 'isbn:0-486-27557-4',
-//   pathqf: 'isbn:0-486-27557-4',
-//   query: null,
-//   fragment: null
-//   href: 'urn:isbn:0-486-27557-4',
-// }
+// { scheme: 'urn', authority: null, path: 'isbn:0-486-27557-4', href: 'urn:isbn:0-486-27557-4', … }
 
 parseURI('http://user:pass@[fe80::7:8%eth0]:8080');
-// {
-//   scheme: 'http',
-//   authority: 'user:pass@[fe80::7:8%eth0]:8080',
-//   authorityPunydecoded: 'user:pass@[fe80::7:8%eth0]:8080',
-//   userinfo: 'user:pass',
-//   host: 'fe80::7:8%eth0',
-//   hostPunydecoded: 'fe80::7:8%eth0',
-//   port: 8080,
-//   path: '',
-//   pathqf: '',
-//   query: null,
-//   fragment: null,
-//   href: 'http://user:pass@[fe80::7:8%eth0]:8080/'
-// }
+// { scheme: 'http', host: 'fe80::7:8%eth0', port: 8080, path: '', href: 'http://user:pass@[fe80::7:8%eth0]:8080/', … }
 ```
 
-### recomposeURI(components)
+</details>
 
-Recompose an URI from its components with basic URI checking.
+<details>
+<summary><em>recomposeURI(components)</em></summary>
 
-The empty string is returned if unable to recompose the URI.
+<br>
 
-**Rules**:
+Recomposes a URI from its components per **RFC-3986 §5.3**, with basic validity checking. Returns the empty string when the rules below are not met.
 
-1. scheme is required and must be at least 1 character;
-2. path is required and can be empty;
-3. if host is present path must be empty or start with `/`;
-4. if host is not present path must not start with `//`;
-5. host, if any, must be at least 3 characters;
-6. userinfo will be ignored if empty;
-7. port will be ignored if unable to parse it into an integer between 0 - 65535;
-8. query will be ignored if empty;
-9. fragment will be ignored if empty.
+**Parameters**
 
-**Support**:
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `components` | [`URIComponents`](#types) | *(required)* | The components to recompose. |
 
-- IPv4 and IPv6.
+**Returns** — `string`. The recomposed URI (or `''` on invalid input).
 
-**Note**:
+**Notes**
 
-- `/` is added to any URI with a host and an empty path.
+- `scheme` is required and must be at least one character.
+- `path` is required and may be empty.
+- If `host` is present, `path` must be empty or start with `/`.
+- If `host` is absent, `path` must not start with `//`.
+- `host`, if present, must be at least three characters.
+- `userinfo` is ignored when empty.
+- `port` is ignored when not parseable as an integer in `0–65535`.
+- `query` and `fragment` are ignored when empty.
+- A trailing `/` is added to any URI with a host and an empty path.
 
-<br/>
+**Examples**
 
-**Generic syntax**:
-
-![URI Syntax](assets/uri-syntax.png "URI Syntax")
-
-<br/>
-
-**Based on**:
-
-- __<a href="https://tools.ietf.org/html/rfc3986" target="_blank">RFC-3986</a>__.
-
-<br/>
-
-- `components` **<Object\>**:
-  - `scheme`* **<String\>** The URI scheme.
-  - `userinfo` **<String\>** The URI userinfo.
-  - `host` **<String\>** The URI authority's host.
-  - `port` **<Number\>** The URI authority's port.
-  - `path`* **<String\>** The URI path.
-  - `query` **<String\>** The URI query.
-  - `fragment` **<String\>** The URI fragment.
-- Returns: **<String\>**
-
-<br/>
-
-**Examples**:
-
-```javascript
-recomposeURI(); // ''
-
-recomposeURI({
-  scheme: null,
-  userinfo: 'user:pass',
-  host: 'example.com',
-  port: 8080,
-  path: null,
-  query: 'a=b',
-  fragment: 'anchor',
-}); // ''
-
-recomposeURI({
-  scheme: 'foo',
-  userinfo: null,
-  host: null,
-  port: null,
-  path: '',
-  query: null,
-  fragment: null,
-}); // 'foo:'
-
+```ts
 recomposeURI({
   scheme: 'foo',
   userinfo: 'user:pass',
@@ -348,6 +333,9 @@ recomposeURI({
   fragment: 'anchor',
 }); // 'foo://user:pass@bar.com:8080/over/there?a=b#anchor'
 
+recomposeURI({ scheme: 'foo', path: '' });
+// 'foo:'
+
 recomposeURI({
   scheme: 'foo',
   userinfo: 'user:pass',
@@ -357,1164 +345,635 @@ recomposeURI({
   query: 'a=b',
   fragment: 'anchor',
 }); // 'foo://user:pass@[fe80::7:8%eth0]:8080/over/there?a=b#anchor'
-
-recomposeURI({
-  scheme: 'foo',
-  userinfo: '',
-  host: 'fe80::7:8%eth0',
-  port: '55g55',
-  path: '/over/there',
-  query: '',
-  fragment: '',
-}); // 'foo://[fe80::7:8%eth0]/over/there'
 ```
 
-### isDomainLabel(label)
+</details>
 
-Test a label is a valid domain label according to **RFC-1034**.
+### Reference resolution
 
-> "Note that while upper and lower case letters are allowed in domain names, no significance is attached to the case.  That is, two names with the same spelling but different case are to be treated as if identical."
+<details>
+<summary><em>resolveURI(base, reference)</em></summary>
 
-By convention uppercased domain label will be considered invalid.
+<br>
 
-**Rules**:
+Resolves a URI reference against an absolute base URI per **RFC-3986 §5.2**: the §5.2.2 strict transform, the §5.2.3 merge, the §5.2.4 `remove_dot_segments`, then recomposes per §5.3.
 
-1. "*Labels must be 63 characters or less.*";
-2. can be minimum one character;
-3. must only use lowercase letters, digits or hyphens;
-4. must not start or end with a hyphen;
-5. must not have consecutive hyphens;
-6. can start or end with a digit.
+**Parameters**
 
-<br/>
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `base` | `string` | *(required)* | The absolute base URI. |
+| `reference` | `string` | *(required)* | The URI reference to resolve. |
 
-**Based on**:
+**Returns** — `string`. The resolved URI, or `''` when the base is not absolute or an argument is not a string.
 
-- __<a href="https://www.ietf.org/rfc/rfc1034.txt" target="_blank">RFC-1034</a>__.
+**Notes**
 
-<br/>
+- The strict algorithm is used: a reference scheme equal to the base scheme is not ignored.
+- A fragment on the base is stripped before resolution per **RFC-3986 §5.1**.
 
-- `label` **<String\>**
-- Returns: **<Boolean\>**
+**Examples**
 
-<br/>
+```ts
+resolveURI('http://a/b/c/d;p?q', '../../g');     // 'http://a/g'
+resolveURI('https://example.com/a/b', './c?x#y'); // 'https://example.com/a/c?x#y'
+resolveURI('/not-absolute', 'g');                 // '' — base is not absolute
+```
 
-**Examples**:
+</details>
 
-```javascript
-isDomainLabel('a'); // true
-isDomainLabel('1a3'); // true
-isDomainLabel('1-3'); // true
-isDomainLabel('1-y'); // true
+<details>
+<summary><em>removeDotSegments(path)</em></summary>
 
-isDomainLabel(); // false
+<br>
+
+Removes the `.` and `..` complete path segments from a path per **RFC-3986 §5.2.4** verbatim.
+
+**Parameters**
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `path` | `string` | *(required)* | The path to normalize. |
+
+**Returns** — `string`. The normalized path.
+
+**Examples**
+
+```ts
+removeDotSegments('/a/b/c/./../../g');   // '/a/g'
+removeDotSegments('mid/content=5/../6'); // 'mid/6'
+```
+
+</details>
+
+### Validators
+
+<details>
+<summary><em>isDomainLabel(label)</em></summary>
+
+<br>
+
+Tests whether a label is a valid domain label per **RFC 1034**. By convention, an uppercased label is considered invalid (`DNS names are case-insensitive, but Coroboros normalizes on lowercase`).
+
+**Parameters**
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `label` | `string` | *(required)* | The label to test. |
+
+**Returns** — `boolean`.
+
+**Notes**
+
+- Length is one to 63 characters.
+- Allowed characters: lowercase letters, digits, hyphen.
+- Cannot start or end with a hyphen.
+- No consecutive hyphens.
+- Can start or end with a digit.
+
+**Examples**
+
+```ts
+isDomainLabel('a');           // true
+isDomainLabel('1a3');         // true
 isDomainLabel('a'.repeat(64)); // false
-isDomainLabel('A'); // false
-isDomainLabel('-a'); // false
-isDomainLabel('a-'); // false
-isDomainLabel('-a'); // false
-isDomainLabel('la--bel'); // false
-isDomainLabel(undefined|null|NaN); // false
+isDomainLabel('A');           // false
+isDomainLabel('-a');          // false
+isDomainLabel('la--bel');     // false
 ```
 
-### isDomain(name)
+</details>
 
-Test a name is a valid domain according to **RFC-1034**.
+<details>
+<summary><em>isDomain(name)</em></summary>
 
-Supports Fully-Qualified Domain Name (FQDN) and Internationalized Domain Name (IDN).
+<br>
 
-**Rules**:
+Tests whether a name is a valid domain per **RFC 1034**, with FQDN and IDN support.
 
-1. __[labels rules apply](#isdomainlabellabel)__;
-2. "*[...] the total number of octets that represent a domain name (i.e., the sum of all label octets and label lengths) is limited to 255.*";
-3. labels are separated by dots (".");
-4. must have at least one extension label;
-5. must have labels different from each other;
-6. last label can be empty (root label ".");
-7. labels can start with `xn--` for IDNs if the ASCII serialization is a valid Punycode **and has valid characters**.
+**Parameters**
 
-<br/>
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | *(required)* | The domain to test. |
 
-**Based on**:
+**Returns** — `boolean`.
 
-- __<a href="https://www.ietf.org/rfc/rfc1034.txt" target="_blank">RFC-1034</a>__.
+**Notes**
 
-<br/>
+- [`isDomainLabel`](#validators) rules apply to each label.
+- Total length is at most 255 octets including label-length octets.
+- Labels are separated by `.`.
+- Must have at least one extension label.
+- All labels must differ.
+- The last label can be empty (root label `.`).
+- Labels starting with `xn--` are valid only when the ASCII serialization is a valid Punycode and the decoded form has valid characters.
 
-- `name` **<String\>**
-- Returns: **<Boolean\>**
+**Examples**
 
-<br/>
+```ts
+isDomain('a.b');                 // true
+isDomain('a.b.');                // true
+isDomain('中文.com');             // true
+isDomain('xn--fiq228c.com');     // true
+isDomain('www.中文.com');         // true
 
-**Examples**:
-
-```javascript
-isDomain('a.b'); // true
-isDomain('a.b.'); // true
-isDomain('中文.com'); // true
-isDomain('xn--fiq228c.com'); // true
-isDomain('www.中文.com'); // true
-isDomain(`${'a'.repeat(63)}.${'b'.repeat(63)}.${'c'.repeat(63)}.${'d'.repeat(63)}`); // true
-
-isDomain(); // false
-isDomain('a'); // false
-isDomain('a.a'); // false
-isDomain('a.b.a'); // false
-isDomain('a.b.a'); // false
+isDomain('a');                   // false
+isDomain('a.a');                 // false
 isDomain('中文.xn--fiq228c.com'); // false
-isDomain('www.xn--hf.com'); // false
-isDomain(`${'a'.repeat(63)}.${'b'.repeat(63)}.${'c'.repeat(63)}.${'d'.repeat(63)}.`); // false
-isDomain('xn--\'-6xd.com') // false even though xn--'-6xd is a valid Punycode for ॐ but has an invalid character
+isDomain('xn--\'-6xd.com');      // false — valid Punycode for ॐ, but ॐ is not a valid character
 ```
 
-### isIP(ip)
+</details>
 
-Test a string is a valid IP.
+<details>
+<summary><em>isIP(ip)</em></summary>
 
-Supports IPv4 and IPv6.
+<br>
 
-<br/>
+Tests whether a string is a valid IPv4 or IPv6 address.
 
-- `ip` **<String\>**
-- Returns: **<Boolean\>**
+**Parameters**
 
-<br/>
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `ip` | `string` | *(required)* | The address to test. |
 
-**Examples**:
+**Returns** — `boolean`.
 
-```javascript
-isIP('23.71.254.72'); // true
-isIP('1:2:3:4::6:7:8'); // true
+**Examples**
 
-isIP(); // false
-isIP('100..100.100.100.'); // false
-isIP('3ffe:b00::1::a'); // false
+```ts
+isIP('23.71.254.72');     // true
+isIP('1:2:3:4::6:7:8');   // true
+isIP('100..100.100.100'); // false
+isIP('3ffe:b00::1::a');   // false
 ```
 
-### isIPv4(ip)
+</details>
 
-Test a string is a valid IPv4.
+<details>
+<summary><em>isIPv4(ip)</em></summary>
 
-<br/>
+<br>
 
-- `ip` **<String\>**
-- Returns: **<Boolean\>**
+Tests whether a string is a valid IPv4 address. Returns `false` for IPv6.
 
-<br/>
-
-**Examples**:
-
-```javascript
+```ts
 isIPv4('8.8.8.8'); // true
-isIPv4('1:2::8'); // false
-isIPv4(); // false
+isIPv4('1:2::8');  // false
 ```
 
-### isIPv6(ip)
+</details>
 
-Test a string is a valid IPv6.
+<details>
+<summary><em>isIPv6(ip)</em></summary>
 
-<br/>
+<br>
 
-- `ip` **<String\>**
-- Returns: **<Boolean\>**
+Tests whether a string is a valid IPv6 address. Returns `false` for IPv4. The standalone validator is lenient regarding zone identifiers — see [`checkURI`](#checkers) for the strict **RFC 6874** form expected inside a URI.
 
-<br/>
-
-**Examples**:
-
-```javascript
+```ts
 isIPv6('2001:0000:1234:0000:0000:C1C0:ABCD:0876'); // true
-isIPv6('212.58.241.131'); // false
-isIPv6(); // false
+isIPv6('212.58.241.131');                          // false
 ```
 
-### checkURI(uri)
+</details>
 
-Check an URI is valid according to **RFC-3986**.
+### Checkers
 
-**Rules**:
+<details>
+<summary><em>checkURI(uri)</em></summary>
 
-1. scheme is required and cannot be empty;
-2. path is required and can be empty;
-3. if authority is present path must be empty or start with `/`;
-4. if authority is not present path must not start with `//`;
-5. __<a href="https://tools.ietf.org/html/rfc3986#section-3.1" target="_blank">scheme can only have specific characters</a>__;
-6. if authority is present:
+<br>
 
-- host must be a valid IP or domain name;
-- __<a href="https://tools.ietf.org/html/rfc3986#section-3.2.1" target="_blank">userinfo, if any, can only have specific characters</a>__;
-- port, if any, must be an integer between 0 - 65535.
+Strictly validates a URI per **RFC-3986**. Returns the parsed components with `valid: true` on success; throws `URIError` with a stable [error code](#errors) on the first failure.
 
-7. __<a href="https://tools.ietf.org/html/rfc3986#section-3.3" target="_blank">path, query and fragment can only have specific characters</a>__.
+**Parameters**
 
-<br/>
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `uri` | `string` | *(required)* | The URI to validate. |
 
-**Generic syntax**:
+**Returns** — [`CheckedURI`](#types).
 
-![URI Syntax](assets/uri-syntax.png "URI Syntax")
+**Throws** — `URIError` with one of: `URI_INVALID_TYPE`, `URI_MISSING_SCHEME`, `URI_EMPTY_SCHEME`, `URI_MISSING_PATH`, `URI_INVALID_PATH`, `URI_INVALID_HOST`, `URI_INVALID_SCHEME_CHAR`, `URI_INVALID_USERINFO_CHAR`, `URI_INVALID_PORT`, `URI_INVALID_PATH_CHAR`, `URI_INVALID_QUERY_CHAR`, `URI_INVALID_FRAGMENT_CHAR`, `URI_INVALID_PERCENT_ENCODING`.
 
-<br/>
+**Notes**
 
-**Based on**:
+- Scheme is required and non-empty (**RFC-3986 §3.1**).
+- Path is required and may be empty.
+- If authority is present, path must be empty or start with `/`; otherwise path must not start with `//`.
+- Authority components: host must be a valid IP or domain; `userinfo` only allows the characters from **RFC-3986 §3.2.1**; `port` must be an integer in `0–65535`.
+- Path, query, and fragment only allow the characters from **RFC-3986 §3.3 / §3.4 / §3.5**.
+- IPv6 zone identifiers must use the `%25` delimiter and a non-empty `ZoneID` of `unreserved` / `pct-encoded` characters (**RFC 6874 §2**).
 
-- __<a href="https://tools.ietf.org/html/rfc3986" target="_blank">RFC-3986</a>__.
+**Examples**
 
-<br/>
-
-- `uri` **<String\>**
-- Returns: **<Object\>**
-  - `scheme` **<String\>** The URI scheme.
-  - `authority` **<String\>** The URI authority with the Punycode ASCII serialization of the domain. *Default*: `null`
-  - `authorityPunydecoded` **<String\>** The URI authority with the Unicode serialization of the domain. *Default*: `null`
-  - `userinfo` **<String\>** The URI userinfo. *Default*: `null`
-  - `host` **<String\>** The URI authority's host with the Punycode ASCII serialization of the domain. *Default*: `null`
-  - `hostPunydecoded` **<String\>** The URI authority's host with the Unicode serialization of the domain. *Default*: `null`
-  - `port` **<Number\>** || **<String\>** The URI authority's port. A string if not able to be parsed in an integer. *Default*: `null`
-  - `path` **<String\>** The URI path.
-  - `pathqf` **<String\>** The URI path, query and fragment.
-  - `query` **<String\>** The URI query. *Default*: `null`
-  - `fragment` **<String\>** The URI fragment. *Default*: `null`
-  - `href` **<String\>** The URI recomposed. *Default*: `null`
-  - `valid` **<Boolean\>** Whether the URI is valid. *Default*: `false`
-- Throws: **<URIError\>** If no error is thrown then the URI is valid. Error codes:
-  - `URI_INVALID_TYPE`
-  - `URI_MISSING_SCHEME`
-  - `URI_EMPTY_SCHEME`
-  - `URI_MISSING_PATH`
-  - `URI_INVALID_PATH`
-  - `URI_INVALID_HOST`
-  - `URI_INVALID_SCHEME_CHAR`
-  - `URI_INVALID_USERINFO_CHAR`
-  - `URI_INVALID_PORT`
-  - `URI_INVALID_PATH_CHAR`
-  - `URI_INVALID_QUERY_CHAR`
-  - `URI_INVALID_FRAGMENT_CHAR`
-  - `URI_INVALID_PERCENT_ENCODING`
-
-<br/>
-
-**Examples**:
-
-```javascript
-checkURI(); // throws URIError with code URI_INVALID_TYPE
-checkURI('://example.com'); // throws URIError with code URI_MISSING_SCHEME
-checkURI('foo:////bar'); // throws URIError with code URI_INVALID_PATH
-checkURI('foo://xn--iñvalid.com'); // throws URIError with code URI_INVALID_HOST
-checkURI('fôo:bar'); // throws URIError with code URI_INVALID_SCHEME_CHAR
-checkURI('foo://üser:pass@bar.com'); // throws URIError with code URI_INVALID_USERINFO_CHAR
-checkURI('foo://bar.com:80g80'); // throws URIError with code URI_INVALID_PORT
-checkURI('foo://bar.com/°'); // throws URIError with code URI_INVALID_PATH_CHAR
-checkURI('foo://bar.com/over/there?quêry=5'); // throws URIError with code URI_INVALID_QUERY_CHAR
-checkURI('foo://bar.com/over/there?query=5#anch#r'); // throws URIError with code URI_INVALID_FRAGMENT_CHAR
-checkURI('http://www.bar.baz/foo%2') // throws URIError with code URI_INVALID_PERCENT_ENCODING
-
+```ts
 checkURI('foo://user:pass@xn--fiq228c.com:8042/over/there?name=ferret#nose');
-// {
-//   scheme: 'foo',
-//   authority: 'user:pass@xn--fiq228c.com:8042',
-//   authorityPunydecoded: 'user:pass@中文.com:8042',
-//   userinfo: 'user:pass',
-//   host: 'xn--fiq228c.com',
-//   hostPunydecoded: '中文.com',
-//   port: 8042,
-//   path: '/over/there',
-//   pathqf: '/over/there?name=ferret#nose',
-//   query: 'name=ferret',
-//   fragment: 'nose',
-//   href: 'foo://user:pass@xn--fiq228c.com:8042/over/there?name=ferret#nose',
-//   valid: true
-// }
+// { scheme: 'foo', host: 'xn--fiq228c.com', valid: true, … }
+
+checkURI();                                          // throws URIError — URI_INVALID_TYPE
+checkURI('://example.com');                          // throws URIError — URI_MISSING_SCHEME
+checkURI('foo:////bar');                             // throws URIError — URI_INVALID_PATH
+checkURI('foo://xn--iñvalid.com');                   // throws URIError — URI_INVALID_HOST
+checkURI('fôo:bar');                                 // throws URIError — URI_INVALID_SCHEME_CHAR
+checkURI('foo://üser:pass@bar.com');                 // throws URIError — URI_INVALID_USERINFO_CHAR
+checkURI('foo://bar.com:80g80');                     // throws URIError — URI_INVALID_PORT
+checkURI('foo://bar.com/°');                         // throws URIError — URI_INVALID_PATH_CHAR
+checkURI('foo://bar.com/over/there?quêry=5');        // throws URIError — URI_INVALID_QUERY_CHAR
+checkURI('foo://bar.com/over/there?query=5#anch#r'); // throws URIError — URI_INVALID_FRAGMENT_CHAR
+checkURI('http://www.bar.baz/foo%2');                // throws URIError — URI_INVALID_PERCENT_ENCODING
 ```
 
-### checkHttpURL(uri)
+</details>
 
-Check an URI is a valid HTTP URL.
+<details>
+<summary><em>checkHttpURL(uri)</em></summary>
 
-**Rules**:
+<br>
 
-1. __[must be a valid URI](#checkuriuri)__;
-1. scheme must be `http` or `HTTP`;
-2. authority is required;
-3. URL must be less than 2048 characters.
+Validates a URI as an HTTP URL on top of [`checkURI`](#checkers).
 
-<br/>
+**Adds**
 
-**Based on**:
+- `scheme` must be `http` or `HTTP` — else `URI_INVALID_SCHEME`.
+- `authority` is required — else `URI_MISSING_AUTHORITY`.
+- URL must be shorter than 2,048 characters — else `URI_MAX_LENGTH_URL`.
 
-- __<a href="https://tools.ietf.org/html/rfc3986" target="_blank">RFC-3986</a>__.
+**Returns** — [`CheckedURI`](#types). Throws `URIError` with any of `checkURI`'s codes plus the three above.
 
-<br/>
-
-- `uri` **<String\>**
-- Returns: **<Object\>**
-  - `scheme` **<String\>** The URL scheme.
-  - `authority` **<String\>** The URL authority with the Punycode ASCII serialization of the domain. *Default*: `null`
-  - `authorityPunydecoded` **<String\>** The URL authority with the Unicode serialization of the domain. *Default*: `null`
-  - `userinfo` **<String\>** The URL userinfo. *Default*: `null`
-  - `host` **<String\>** The URL authority's host with the Punycode ASCII serialization of the domain. *Default*: `null`
-  - `hostPunydecoded` **<String\>** The URL authority's host with the Unicode serialization of the domain. *Default*: `null`
-  - `port` **<Number\>** || **<String\>** The URL authority's port. A string if not able to be parsed in an integer. *Default*: `null`
-  - `path` **<String\>** The URL path.
-  - `pathqf` **<String\>** The URI path, query and fragment.
-  - `query` **<String\>** The URL query. *Default*: `null`
-  - `fragment` **<String\>** The URL fragment. *Default*: `null`
-  - `href` **<String\>** The URL recomposed. *Default*: `null`
-  - `valid` **<Boolean\>** Whether the URL is valid. *Default*: `false`
-- Throws: **<URIError\>** If no error is thrown then the URL is valid. Error codes:
-  - `URI_INVALID_TYPE`
-  - `URI_MISSING_SCHEME`
-  - `URI_EMPTY_SCHEME`
-  - `URI_MISSING_PATH`
-  - `URI_INVALID_PATH`
-  - `URI_INVALID_HOST`
-  - `URI_INVALID_USERINFO_CHAR`
-  - `URI_INVALID_PORT`
-  - `URI_INVALID_PATH_CHAR`
-  - `URI_INVALID_QUERY_CHAR`
-  - `URI_INVALID_FRAGMENT_CHAR`
-  - `URI_INVALID_PERCENT_ENCODING`
-  - `URI_INVALID_SCHEME`
-  - `URI_MISSING_AUTHORITY`
-  - `URI_MAX_LENGTH_URL`
-
-<br/>
-
-**Examples**:
-
-```javascript
-checkHttpURL(); // throws URIError with code URI_INVALID_TYPE
-checkHttpURL('://example.com'); // throws URIError with code URI_MISSING_SCHEME
-checkHttpURL('http:////bar'); // throws URIError with code URI_INVALID_PATH
-checkHttpURL('http://xn--iñvalid.com'); // throws URIError with code URI_INVALID_HOST
-checkHttpURL('http://üser:pass@bar.com'); // throws URIError with code URI_INVALID_USERINFO_CHAR
-checkHttpURL('http://bar.com:80g80'); // throws URIError with code URI_INVALID_PORT
-checkHttpURL('http://bar.com/°'); // throws URIError with code URI_INVALID_PATH_CHAR
-checkHttpURL('http://bar.com/over/there?quêry=5'); // throws URIError with code URI_INVALID_QUERY_CHAR
-checkHttpURL('http://bar.com/over/there?query=5#anch#r'); // throws URIError with code URI_INVALID_FRAGMENT_CHAR
-checkHttpURL('http://www.bar.baz/foo%2') // throws URIError with code URI_INVALID_PERCENT_ENCODING
-checkHttpURL('httê://bar.com:8080'); // throws URIError with code URI_INVALID_SCHEME
-checkHttpURL('http:isbn:0-486-27557-4'); // throws URIError with code URI_MISSING_AUTHORITY
-checkHttpURL(`http://example.com/${'path'.repeat(2040)}`); // throws URIError with code URI_MAX_LENGTH_URL
-
+```ts
 checkHttpURL('http://user:pass@xn--fiq228c.com:8042/over/there?name=ferret#nose');
-// {
-//   scheme: 'http',
-//   authority: 'user:pass@xn--fiq228c.com:8042',
-//   authorityPunydecoded: 'user:pass@中文.com:8042',
-//   userinfo: 'user:pass',
-//   host: 'xn--fiq228c.com',
-//   hostPunydecoded: '中文.com',
-//   port: 8042,
-//   path: '/over/there',
-//   pathqf: '/over/there?name=ferret#nose',
-//   query: 'name=ferret',
-//   fragment: 'nose',
-//   href: 'http://user:pass@xn--fiq228c.com:8042/over/there?name=ferret#nose',
-//   valid: true
-// }
+// { scheme: 'http', host: 'xn--fiq228c.com', valid: true, … }
 ```
 
-### checkHttpsURL(uri)
+</details>
 
-Check an URI is a valid HTTPS URL. Same behavior than __[checkHttpURL](#checkhttpurluri)__ except scheme must be `https` or `HTTPS`.
+<details>
+<summary><em>checkHttpsURL(uri)</em></summary>
 
-### checkHttpSitemapURL(uri)
+<br>
 
-Check an URI is a valid HTTP URL to be used in an XML sitemap file.
+Same as [`checkHttpURL`](#checkers) but `scheme` must be `https` or `HTTPS`.
 
-For text sitemap please refer to __[checkHttpURL](#checkhttpurluri)__ as there is no need to escape entities **but URL must be in lowercase**.
+</details>
 
-**Rules**:
+<details>
+<summary><em>checkWebURL(uri)</em></summary>
 
-1. __[must be a valid URL](#checkhttpurluri)__;
-1. scheme must be `http`;
-2. authority is required;
-3. specific characters must be escaped;
-4. can only contain lowercase characters (prechecked);
-5. URL must be less than 2048 characters.
+<br>
 
-**Valid URI characters to be escaped or percent-encoded in a sitemap URL**:
+Same as [`checkHttpURL`](#checkers) but `scheme` can be `http` / `HTTP` or `https` / `HTTPS`.
 
-| Character    | Value | Escape Code |
-| :----------- |:-----:| :---------: |
+</details>
+
+<details>
+<summary><em>checkHttpSitemapURL(uri)</em></summary>
+
+<br>
+
+Validates a URI as an HTTP URL fit for an XML sitemap on top of [`checkHttpURL`](#checkers).
+
+**Adds**
+
+- The URL must be all lowercase (scheme, host, path, query, fragment) — else `URI_INVALID_CHAR`.
+- Specific characters must be escaped — the table below lists them.
+- Percent-encoded sitemap escapes (`&amp;`, `&apos;`, `&quot;`, `&lt;`, `&gt;`) must be well-formed — else `URI_INVALID_SITEMAP_ENCODING`.
+
+**Sitemap-escaped characters**
+
+| Character    | Value | Escape code |
+| :----------- | :---: | :---------: |
 | Ampersand    | `&`   | `&amp;`     |
-| Single Quote | `'`   | `&apos;`    |
+| Single quote | `'`   | `&apos;`    |
+| Double quote | `"`   | `&quot;`    |
+| Less than    | `<`   | `&lt;`      |
+| Greater than | `>`   | `&gt;`      |
 | Asterisk     | `*`   | `%2A`       |
 
-<br/>
+For plain-text sitemaps no escaping is required — use [`checkHttpURL`](#checkers) instead, but the URL must still be lowercase.
 
-**Based on**:
+**Returns** — [`CheckedURI`](#types). Throws `URIError` with the union of `checkHttpURL`'s codes plus `URI_INVALID_CHAR`, `URI_INVALID_SITEMAP_ENCODING`.
 
-- __<a href="https://tools.ietf.org/html/rfc3986" target="_blank">RFC-3986</a>__;
-- __<a href="https://support.google.com/webmasters/answer/183668?hl=en&ref_topic=4581190" target="_blank">Google: Build and submit a sitemap</a>__.
-
-<br/>
-
-- `uri` **<String\>**
-- Returns: **<Object\>**
-  - `scheme` **<String\>** The URL scheme.
-  - `authority` **<String\>** The URL authority with the Punycode ASCII serialization of the domain. *Default*: `null`
-  - `authorityPunydecoded` **<String\>** The URL authority with the Unicode serialization of the domain. *Default*: `null`
-  - `userinfo` **<String\>** The URL userinfo. *Default*: `null`
-  - `host` **<String\>** The URL authority's host with the Punycode ASCII serialization of the domain. *Default*: `null`
-  - `hostPunydecoded` **<String\>** The URL authority's host with the Unicode serialization of the domain. *Default*: `null`
-  - `port` **<Number\>** || **<String\>** The URL authority's port. A string if not able to be parsed in an integer. *Default*: `null`
-  - `path` **<String\>** The URL path.
-  - `pathqf` **<String\>** The URI path, query and fragment.
-  - `query` **<String\>** The URL query. *Default*: `null`
-  - `fragment` **<String\>** The URL fragment. *Default*: `null`
-  - `href` **<String\>** The URL recomposed. *Default*: `null`
-  - `valid` **<Boolean\>** Whether the URL is valid. *Default*: `false`
-- Throws: **<URIError\>** If no error is thrown then the URL is valid. Error codes:
-  - `URI_INVALID_TYPE`
-  - `URI_MISSING_SCHEME`
-  - `URI_EMPTY_SCHEME`
-  - `URI_MISSING_PATH`
-  - `URI_INVALID_PATH`
-  - `URI_INVALID_HOST`
-  - `URI_INVALID_USERINFO_CHAR`
-  - `URI_INVALID_PORT`
-  - `URI_INVALID_CHAR`
-  - `URI_INVALID_PATH_CHAR`
-  - `URI_INVALID_QUERY_CHAR`
-  - `URI_INVALID_FRAGMENT_CHAR`
-  - `URI_INVALID_PERCENT_ENCODING`
-  - `URI_INVALID_SITEMAP_ENCODING`
-  - `URI_INVALID_SCHEME`
-  - `URI_MISSING_AUTHORITY`
-  - `URI_MAX_LENGTH_URL`
-
-<br/>
-
-**Examples**:
-
-```javascript
-checkHttpSitemapURL(); // throws URIError with code URI_INVALID_TYPE
-checkHttpSitemapURL('://example.com'); // throws URIError with code URI_MISSING_SCHEME
-checkHttpSitemapURL('http:////bar'); // throws URIError with code URI_INVALID_PATH
-checkHttpSitemapURL('http://xn--iñvalid.com'); // throws URIError with code URI_INVALID_HOST
-checkHttpSitemapURL('http://*ser:pass@bar.com'); // throws URIError with code URI_INVALID_USERINFO_CHAR
-checkHttpSitemapURL('http://bar.com:80g80'); // throws URIError with code URI_INVALID_PORT
-checkHttpSitemapURL('hTtp://bar.com/Path'); // throws URIError with code URI_INVALID_CHAR
-checkHttpSitemapURL('http://bAr.com/Path'); // throws URIError with code URI_INVALID_CHAR
-checkHttpSitemapURL('http://bar.com/Path'); // throws URIError with code URI_INVALID_CHAR
-checkHttpSitemapURL('http://bar.com/path\''); // throws URIError with code URI_INVALID_PATH_CHAR
-checkHttpSitemapURL('http://bar.com/over/there?a=5&b=9'); // throws URIError with code URI_INVALID_QUERY_CHAR
-checkHttpSitemapURL('http://bar.com/over/there?a=5#anch*r'); // throws URIError with code URI_INVALID_FRAGMENT_CHAR
-checkHttpSitemapURL('http://www.bar.baz/foo%2') // throws URIError with code URI_INVALID_PERCENT_ENCODING
-checkHttpSitemapURL('http://www.bar.baz/foo?a=5&am;b=9') // throws URIError with code URI_INVALID_SITEMAP_ENCODING
-checkHttpSitemapURL('hêtp://bar.com:8080'); // throws URIError with code URI_INVALID_SCHEME
-checkHttpSitemapURL('http:isbn:0-486-27557-4'); // throws URIError with code URI_MISSING_AUTHORITY
-checkHttpSitemapURL(`http://example.com/${'path'.repeat(2040)}`); // throws URIError with code URI_MAX_LENGTH_URL
-
+```ts
 checkHttpSitemapURL('http://user:pass@xn--fiq228c.com:8042/over/there?name=ferret&amp;catch=rabbits#nose');
-// {
-//   scheme: 'http',
-//   authority: 'user:pass@xn--fiq228c.com:8042',
-//   authorityPunydecoded: 'user:pass@中文.com:8042',
-//   userinfo: 'user:pass',
-//   host: 'xn--fiq228c.com',
-//   hostPunydecoded: '中文.com',
-//   port: 8042,
-//   path: '/over/there',
-//   pathqf: '/over/there?name=ferret&amp;catch=rabbits#nose',
-//   query: 'name=ferret&amp;catch=rabbits',
-//   fragment: 'nose',
-//   href: 'http://user:pass@xn--fiq228c.com:8042/over/there?name=ferret&amp;catch=rabbits#nose',
-//   valid: true
-// }
+// { scheme: 'http', host: 'xn--fiq228c.com', valid: true, … }
 ```
 
-### checkHttpsSitemapURL(uri)
+</details>
 
-Check an URI is a valid HTTPS URL to be used in an XML sitemap file. Same behavior than __[checkHttpSitemapURL](#checkhttpsitemapurluri)__ except scheme must be `https`.
+<details>
+<summary><em>checkHttpsSitemapURL(uri)</em></summary>
 
-### checkWebURL(uri)
+<br>
 
-Check an URI is a valid HTTP or HTTPS URL. Same behavior than __[checkHttpURL](#checkhttpurluri)__ except scheme can be `http`/`HTTP` or `https`/`HTTPS`.
+Same as [`checkHttpSitemapURL`](#checkers) but `scheme` must be `https`.
 
-### checkSitemapURL(uri)
+</details>
 
-Check an URI is a valid HTTP or HTTPS URL to be used in an XML sitemap file. Same behavior than __[checkHttpSitemapURL](#checkhttpsitemapurluri)__ except scheme can be `http` or `https`.
+<details>
+<summary><em>checkSitemapURL(uri)</em></summary>
 
-### encodeURIComponentString(component, options)
+<br>
 
-Encode an URI component according to **RFC-3986**.
+Same as [`checkHttpSitemapURL`](#checkers) but `scheme` can be `http` or `https`.
 
-**Support**:
+</details>
 
-- Sitemap's special characters, see __[checkHttpSitemapURL](#checkhttpsitemapurluri)__;
-- lower and upper case.
+### Encoders
 
-**Note**:
+<details>
+<summary><em>encodeURIComponentString(component, options)</em></summary>
 
-- only `userinfo`, `path`, `query` and `fragment` components can be encoded with specific rules for each type regarding valid characters (**RFC-3986**);
-- `scheme` and `authority` (host and port) can never have escaped or percent-encoded characters;
-- the empty string is returned if unable to encode;
-- __[sitemap characters](#checkhttpsitemapurluri)__ must be in lowercase and escaped for XML sitemap URLs.
+<br>
 
-<br/>
+Encodes a URI component per **RFC-3986**, with per-type rules and an optional Sitemap-aware mode. Returns the empty string when the input is not a string.
 
-**Generic syntax**:
+**Parameters**
 
-![URI Syntax](assets/uri-syntax.png "URI Syntax")
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `component` | `string` | *(required)* | The component to encode. |
+| `options.type` | `'userinfo' \| 'path' \| 'query' \| 'fragment'` | *(none)* | The component type. Without a type, native `encodeURIComponent` is used (RFC-2396, outdated). |
+| `options.lowercase` | `boolean` | `false` | Lowercase the component before encoding. |
+| `options.sitemap` | `boolean` | `false` | Escape Sitemap's special characters (see [`checkHttpSitemapURL`](#checkers)). |
 
-<br/>
+**Returns** — `string`. The encoded component (or `''` on invalid input).
 
-**Based on**:
+**Notes**
 
-- __<a href="https://tools.ietf.org/html/rfc3986" target="_blank">RFC-3986</a>__;
-- __<a href="https://support.google.com/webmasters/answer/183668?hl=en&ref_topic=4581190" target="_blank">Google: Build and submit a sitemap</a>__.
+- Only `userinfo`, `path`, `query`, and `fragment` can be percent-encoded. `scheme` and `authority` (host and port) cannot.
+- Pass a component type. Without it, native `encodeURIComponent` over-escapes `!`, `*`, `'`, `(`, `)`, which **RFC-3986** treats as valid sub-delims.
 
-<br/>
+**Examples**
 
-- `component` **<String\>**
-- `options` **<Object\>**:
-  - `type` **<String\>** The component type. If no type is provided native function *encodeURIComponent* will be used to encode each character. *Default*: `none` One of:
-    - `userinfo`
-    - `path`
-    - `query`
-    - `fragment`
-  - `lowercase` **<Boolean\>** Whether the component should be returned in lowercase. *Default*: `false`
-  - `sitemap` **<Boolean\>** Whether to escape Sitemap's special characters. See __[checkHttpSitemapURL](#checkhttpsitemapurluri)__.
-- Returns: **<String\>**
-
-<br/>
-
-**Examples**:
-
-```javascript
-encodeURIComponentString(); // ''
-encodeURIComponentString(''); // ''
-encodeURIComponentString('cômpön€nt'); // 'c%C3%B4mp%C3%B6n%E2%82%ACnt'
-encodeURIComponentString('AbC'); // 'AbC'
-encodeURIComponentString('AbC', { lowercase: true }); // 'abc'
-encodeURIComponentString('*'); // '*'
-encodeURIComponentString('*', { sitemap: true }); // '%2A'
-
-// it is highly recommended to use a component type
-encodeURIComponentString('A#/?@[]&\'*'); // 'A%23%2F%3F%40%5B%5D%26\'*' (native function, outdated standard)
-encodeURIComponentString('A#/?@[]&\'*', { type: 'userinfo' }); // 'A%23%2F%3F%40%5B%5D&\'*' (RFC-3986 characters in userinfo)
-encodeURIComponentString('A#/?@[]&\'*', { type: 'path' }); // 'A%23/%3F@%5B%5D&\'*'
-encodeURIComponentString('A#/?@[]&\'*', { type: 'query' }); // 'A%23/?@%5B%5D&\'*'
-encodeURIComponentString('A#/?@[]&\'*', { type: 'fragment' }); // 'A%23/?@%5B%5D&\'*'
-encodeURIComponentString('A#/?@[]&\'*', { type: 'fragment', sitemap: true }); // 'a%23/?@%5B%5D&amp;&apos;%2A'
+```ts
+encodeURIComponentString('cômpön€nt');                     // 'c%C3%B4mp%C3%B6n%E2%82%ACnt'
+encodeURIComponentString('AbC', { lowercase: true });      // 'abc'
+encodeURIComponentString('*', { sitemap: true });          // '%2A'
+encodeURIComponentString("A#/?@[]&'*");                    // 'A%23%2F%3F%40%5B%5D%26\'*' — outdated RFC-2396
+encodeURIComponentString("A#/?@[]&'*", { type: 'userinfo' }); // 'A%23%2F%3F%40%5B%5D&\'*'
+encodeURIComponentString("A#/?@[]&'*", { type: 'path' });     // 'A%23/%3F@%5B%5D&\'*'
+encodeURIComponentString("A#/?@[]&'*", { type: 'fragment', sitemap: true });
+// 'a%23/?@%5B%5D&amp;&apos;%2A'
 ```
 
-### encodeURIString(uri, options)
+</details>
 
-Encode an URI string according to **RFC-3986** with basic checking.
+<details>
+<summary><em>encodeURIString(uri, options)</em></summary>
 
-**Checked**:
+<br>
 
-- scheme is required;
-- path is required, can be empty;
-- port, if any, must be an integer between 0 - 65535;
-- host must be a valid IP or domain name.
+Encodes a URI string per **RFC-3986** with basic validity checking and IDN support. The native `encodeURI` is **RFC-2396**, which is outdated and over-encodes; this function fixes both issues.
 
-**Support**:
+**Parameters**
 
-- IDNs: returns URI with its Punycode host, if any;
-- lower and upper case.
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `uri` | `string` | *(required)* | The URI to encode. |
+| `options.lowercase` | `boolean` | `false` | Lowercase the entire URI including path, query, and fragment. |
 
-**Note**:
+**Returns** — `string`. The encoded URI.
 
-- only `userinfo`, `path`, `query` and `fragment` can be percent-encoded;
-- native function `encodeURI` encodes string according to **RFC-2396** which is outdated;
-- native function `encodeURI` also encodes scheme and host that cannot have
-  percend-encoded characters;
-- characters that should not be percent-encoded in **RFC-3986** are `[]` to represent IPv6 host;
-- to stay fully **RFC-3986** compliant, scheme and host are put in lowercase.
+**Throws** — `URIError` with one of: `URI_INVALID_TYPE`, `URI_MISSING_SCHEME`, `URI_EMPTY_SCHEME`, `URI_MISSING_PATH`, `URI_INVALID_PATH`, `URI_INVALID_HOST`, `URI_INVALID_SCHEME_CHAR`, `URI_INVALID_PORT`.
 
-<br/>
+**Notes**
 
-**Generic syntax**:
+- Only `userinfo`, `path`, `query`, and `fragment` can be percent-encoded; `scheme` and `host` cannot.
+- IDN hosts are serialized to Punycode.
+- `[` and `]` are not percent-encoded — they delimit IPv6 hosts.
+- By default only scheme and host are lowercased (**RFC-3986 §6.2.2.1**). Path, query, and fragment are case-sensitive — see [Limitations](#limitations) for the `lowercase` flag's scope.
 
-![URI Syntax](assets/uri-syntax.png "URI Syntax")
+**Examples**
 
-<br/>
+```ts
+encodeURIString('HTTPS://WWW.中文.COM./Over/There?a=B&b=c#Anchor');
+// 'https://www.xn--fiq228c.com./Over/There?a=B&b=c#Anchor'
 
-**Based on**:
+encodeURIString('HTTPS://WWW.中文.COM./Over/There?a=B&b=c#Anchor', { lowercase: true });
+// 'https://www.xn--fiq228c.com./over/there?a=b&b=c#anchor'
 
-- __<a href="https://tools.ietf.org/html/rfc3986" target="_blank">RFC-3986</a>__.
-
-<br/>
-
-- `uri` **<String\>**
-- `options` **<Object\>**:
-  - `lowercase` **<Boolean\>** Whether the uri should be returned in lowercase. *Default*: `false`
-- Returns: **<String\>**
-- Throws: **<URIError\>** Error codes:
-  - `URI_INVALID_TYPE`
-  - `URI_MISSING_SCHEME`
-  - `URI_EMPTY_SCHEME`
-  - `URI_MISSING_PATH`
-  - `URI_INVALID_PATH`
-  - `URI_INVALID_HOST`
-  - `URI_INVALID_SCHEME_CHAR`
-  - `URI_INVALID_PORT`
-
-<br/>
-
-**Examples**:
-
-```javascript
-encodeURIString(); // throws URIError with code URI_INVALID_TYPE
-encodeURIString('://example.com'); // throws URIError with code URI_MISSING_SCHEME
-encodeURIString('http:////bar'); // throws URIError with code URI_INVALID_PATH
-encodeURIString('http://xn--iñvalid.com'); // throws URIError with code URI_INVALID_HOST
-encodeURIString('hôtp:bar'); // throws URIError with code URI_INVALID_SCHEME_CHAR
-encodeURIString('http://bar.com:80g80'); // throws URIError with code URI_INVALID_PORT
-
-encodeURIString('HTTPS://WWW.中文.COM./Over/There?a=B&b=c#Anchor'); // 'https://www.xn--fiq228c.com./Over/There?a=B&b=c#Anchor'
-encodeURIString('HTTPS://WWW.中文.COM./Over/There?a=B&b=c#Anchor', { lowercase: true }); // 'https://www.xn--fiq228c.com./over/there?a=b&b=c#anchor'
-encodeURIString('foo://usër:pâss@bar.baz:8080/Ovër There?ù=B&b=c#Anchôr'); // 'foo://us%C3%ABr:p%C3%A2ss@bar.baz:8080/Ov%C3%ABr%20There?%C3%B9=B&b=c#Anch%C3%B4r'
+encodeURIString('foo://usër:pâss@bar.baz:8080/Ovër There?ù=B&b=c#Anchôr');
+// 'foo://us%C3%ABr:p%C3%A2ss@bar.baz:8080/Ov%C3%ABr%20There?%C3%B9=B&b=c#Anch%C3%B4r'
 ```
 
-### encodeWebURL(uri, options)
+</details>
 
-Encode an URI string with basic checking based on **RFC-3986** standard applied to HTTP and HTTPS URLs.
+<details>
+<summary><em>encodeWebURL(uri, options)</em></summary>
 
-Uses __[a fixed encodeURI function](#encodeuristringuri-options)__ to be **RFC-3986** compliant.
+<br>
 
-**Checked**:
+Encodes an HTTP or HTTPS URL per **RFC-3986**, on top of [`encodeURIString`](#encoders). Uses the same fixed-encode logic but enforces the HTTP(S) constraints.
 
-- scheme must be `http`/`HTTP` or `https`/`HTTPS`;
-- path is required, can be empty;
-- authority is required;
-- port, if any, must be an integer between 0 - 65535;
-- host must be a valid IP or domain name;
-- URL must be less than 2048 characters.
+**Adds**
 
-**Support**:
+- `scheme` must be `http` / `HTTP` or `https` / `HTTPS` — else `URI_INVALID_SCHEME`.
+- `authority` is required — else `URI_MISSING_AUTHORITY`.
+- URL must be shorter than 2,048 characters — else `URI_MAX_LENGTH_URL`.
 
-- IDNs: returns URL with its Punycode host, if any;
-- lower and upper case.
+**Parameters and options** — identical to [`encodeURIString`](#encoders).
 
-**Note**:
+**Examples**
 
-- only `userinfo`, `path`, `query` and `fragment` can be percent-encoded;
-- native function `encodeURI` encodes string according to **RFC-2396** which is outdated;
-- native function `encodeURI` also encodes scheme and host that cannot have
-  percend-encoded characters;
-- characters that should not be percent-encoded in **RFC-3986** are `[]` to represent IPv6 host;
-- to stay fully **RFC-3986** compliant, scheme and host are put in lowercase.
+```ts
+encodeWebURL('HTTPS://WWW.中文.COM./Over/There?a=B&b=c#Anchor');
+// 'https://www.xn--fiq228c.com./Over/There?a=B&b=c#Anchor'
 
-<br/>
-
-**Generic syntax**:
-
-![URI Syntax](assets/uri-syntax.png "URI Syntax")
-
-<br/>
-
-**Based on**:
-
-- __<a href="https://tools.ietf.org/html/rfc3986" target="_blank">RFC-3986</a>__.
-
-<br/>
-
-- `uri` **<String\>**
-- `options` **<Object\>**:
-  - `lowercase` **<Boolean\>** Whether the uri should be returned in lowercase. *Default*: `false`
-- Returns: **<String\>**
-- Throws: **<URIError\>** Error codes:
-  - `URI_INVALID_TYPE`
-  - `URI_MISSING_SCHEME`
-  - `URI_EMPTY_SCHEME`
-  - `URI_MISSING_PATH`
-  - `URI_INVALID_PATH`
-  - `URI_INVALID_HOST`
-  - `URI_INVALID_SCHEME`
-  - `URI_INVALID_PORT`
-  - `URI_MISSING_AUTHORITY`
-  - `URI_MAX_LENGTH_URL`
-
-<br/>
-
-**Examples**:
-
-```javascript
-encodeWebURL(); // throws URIError with code URI_INVALID_TYPE
-encodeWebURL('://example.com'); // throws URIError with code URI_MISSING_SCHEME
-encodeWebURL('http:////bar'); // throws URIError with code URI_INVALID_PATH
-encodeWebURL('http://xn--iñvalid.com'); // throws URIError with code URI_INVALID_HOST
-encodeWebURL('ftp://bar.baz'); // throws URIError with code URI_INVALID_SCHEME
-encodeWebURL('hôtp://bar.baz'); // throws URIError with code URI_INVALID_SCHEME
-encodeWebURL('http://bar.com:80g80'); // throws URIError with code URI_INVALID_PORT
-encodeWebURL('http:isbn:0-486-27557-4'); // throws URIError with code URI_MISSING_AUTHORITY
-encodeWebURL(`http://example.com/${'path'.repeat(2040)}`); // throws URIError with code URI_MAX_LENGTH_URL
-
-encodeWebURL('HTTPS://WWW.中文.COM./Over/There?a=B&b=c#Anchor'); // 'https://www.xn--fiq228c.com./Over/There?a=B&b=c#Anchor'
-encodeWebURL('HTTPS://WWW.中文.COM./Over/There?a=B&b=c#Anchor', { lowercase: true }); // 'https://www.xn--fiq228c.com./over/there?a=b&b=c#anchor'
-encodeWebURL('http://usër:pâss@bar.baz:8080/Ovër There?ù=B&b=c#Anchôr'); // 'http://us%C3%ABr:p%C3%A2ss@bar.baz:8080/Ov%C3%ABr%20There?%C3%B9=B&b=c#Anch%C3%B4r'
+encodeWebURL('http://usër:pâss@bar.baz:8080/Ovër There?ù=B&b=c#Anchôr');
+// 'http://us%C3%ABr:p%C3%A2ss@bar.baz:8080/Ov%C3%ABr%20There?%C3%B9=B&b=c#Anch%C3%B4r'
 ```
 
-### encodeSitemapURL(uri)
+</details>
 
-Encode an URI string with basic checking based on **RFC-3986** standard applied to HTTP and HTTPS URLs and sitemap requirements regarding special characters to escape.
+<details>
+<summary><em>encodeSitemapURL(uri)</em></summary>
 
-Uses __[a fixed encodeURI function](#encodeuristringuri-options)__ to be **RFC-3986** compliant.
+<br>
 
-**Checked**:
+Encodes an HTTP or HTTPS URL for an XML sitemap on top of [`encodeWebURL`](#encoders) — applies Sitemap escape codes and lowercases the URL.
 
-- scheme must be `http`/`HTTP` or `https`/`HTTPS`;
-- path is required, can be empty;
-- authority is required;
-- port, if any, must be an integer between 0 - 65535;
-- host must be a valid IP or domain name;
-- URL must be less than 2048 characters.
+**Adds**
 
-**Support**:
+- Sitemap's special characters are escaped (see [`checkHttpSitemapURL`](#checkers)).
+- The output is fully lowercased.
 
-- Sitemap's special characters, see __[checkHttpSitemapURL](#checkhttpsitemapurluri)__;
-- IDNs: returns URI with its Punycode host, if any;
-- **characters are automatically put in lowercase**.
+**Examples**
 
-**Note**:
-
-- only `userinfo`, `path`, `query` and `fragment` can be percent-encoded;
-- native function `encodeURI` encodes string according to **RFC-2396** which is outdated;
-- native function `encodeURI` also encodes scheme and host that cannot have
-  percend-encoded characters;
-- characters that should not be percent-encoded in **RFC-3986** are `[]` to represent IPv6 host;
-- to stay fully **RFC-3986** compliant, scheme and host are put in lowercase.
-
-<br/>
-
-**Generic syntax**:
-
-![URI Syntax](assets/uri-syntax.png "URI Syntax")
-
-<br/>
-
-**Based on**:
-
-- __<a href="https://tools.ietf.org/html/rfc3986" target="_blank">RFC-3986</a>__;
-- __<a href="https://support.google.com/webmasters/answer/183668?hl=en&ref_topic=4581190" target="_blank">Google: Build and submit a sitemap</a>__.
-
-<br/>
-
-- `uri` **<String\>**
-- Returns: **<String\>**
-- Throws: **<URIError\>** Error codes:
-  - `URI_INVALID_TYPE`
-  - `URI_MISSING_SCHEME`
-  - `URI_EMPTY_SCHEME`
-  - `URI_MISSING_PATH`
-  - `URI_INVALID_PATH`
-  - `URI_INVALID_HOST`
-  - `URI_INVALID_SCHEME`
-  - `URI_INVALID_PORT`
-  - `URI_MISSING_AUTHORITY`
-  - `URI_MAX_LENGTH_URL`
-
-<br/>
-
-**Examples**:
-
-```javascript
-encodeSitemapURL(); // throws URIError with code URI_INVALID_TYPE
-encodeSitemapURL('://example.com'); // throws URIError with code URI_MISSING_SCHEME
-encodeSitemapURL('http:////bar'); // throws URIError with code URI_INVALID_PATH
-encodeSitemapURL('http://xn--iñvalid.com'); // throws URIError with code URI_INVALID_HOST
-encodeSitemapURL('ftp://bar.baz'); // throws URIError with code URI_INVALID_SCHEME
-encodeSitemapURL('hôtp://bar.baz'); // throws URIError with code URI_INVALID_SCHEME
-encodeSitemapURL('http://bar.com:80g80'); // throws URIError with code URI_INVALID_PORT
-encodeSitemapURL('http:isbn:0-486-27557-4'); // throws URIError with code URI_MISSING_AUTHORITY
-encodeSitemapURL(`http://example.com/${'path'.repeat(2040)}`); // throws URIError with code URI_MAX_LENGTH_URL
-
-encodeSitemapURL('http://user:p\'âss@bar.baz/it\'s *ver/there?a=b&b=c#anch*r'); // 'http://user:p&apos;%C3%A2ss@bar.baz/it&apos;s%20%2Aver/there?a=b&amp;b=c#anch%2Ar'
+```ts
+encodeSitemapURL("http://user:p'âss@bar.baz/it's *ver/there?a=b&b=c#anch*r");
+// 'http://user:p&apos;%C3%A2ss@bar.baz/it&apos;s%20%2Aver/there?a=b&amp;b=c#anch%2Ar'
 ```
 
-### decodeURIComponentString(component, options)
+</details>
 
-Decode an URI component string.
+### Decoders
 
-Native function `decodeURIComponent` could throw and to be consistent with [encodeURIComponentString](#encodeuricomponentstringcomponent-options) the empty string is returned if unable to decode.
+<details>
+<summary><em>decodeURIComponentString(component, options)</em></summary>
 
-**Support**:
+<br>
 
-- Sitemap's escape codes, see __[checkHttpSitemapURL](#checkhttpsitemapurluri)__;
-- lower and upper case.
+Decodes a URI component string. Returns the empty string when the input cannot be decoded (`decodeURIComponent` would throw).
 
-<br/>
+**Parameters**
 
-**Based on**:
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `component` | `string` | *(required)* | The component to decode. |
+| `options.lowercase` | `boolean` | `false` | Lowercase the result. |
+| `options.sitemap` | `boolean` | `false` | Decode Sitemap escape codes (see [`checkHttpSitemapURL`](#checkers)). |
 
-- __<a href="https://tools.ietf.org/html/rfc3986" target="_blank">RFC-3986</a>__;
-- __<a href="https://support.google.com/webmasters/answer/183668?hl=en&ref_topic=4581190" target="_blank">Google: Build and submit a sitemap</a>__.
+**Returns** — `string`. The decoded component (or `''` on invalid input).
 
-<br/>
+**Examples**
 
-- `component` **<String\>**
-- `options` **<Object\>**:
-  - `lowercase` **<Boolean\>** Whether the component should be returned in lowercase. *Default*: `false`
-  - `sitemap` **<Boolean\>** Whether to decode Sitemap's escape codes. See __[checkHttpSitemapURL](#checkhttpsitemapurluri)__.
-- Returns: **<String\>**
-
-<br/>
-
-**Examples**:
-
-```javascript
-decodeURIComponentString(); // ''
-decodeURIComponentString(''); // ''
-decodeURIComponentString('AbC'); // 'AbC'
-decodeURIComponentString('AbC', { lowercase: true }); // 'abc'
-decodeURIComponentString('%2A'); // '*'
-decodeURIComponentString('&apos;&amp;%2A', { sitemap: true }); // '\'&*'
-decodeURIComponentString('SITE&amp;maP', { sitemap: true, lowercase: true }); // 'site&map'
+```ts
+decodeURIComponentString('%2A');                                       // '*'
+decodeURIComponentString('&apos;&amp;%2A', { sitemap: true });         // "'&*"
+decodeURIComponentString('SITE&amp;maP', { sitemap: true, lowercase: true });
+// 'site&map'
 ```
 
-### decodeURIString(uri, options)
+</details>
 
-Decode an URI string according to **RFC-3986** with basic checking.
+<details>
+<summary><em>decodeURIString(uri, options)</em></summary>
 
-**Checked**:
+<br>
 
-- scheme is required;
-- path is required, can be empty;
-- port, if any, must be an integer between 0 - 65535;
-- host must be a valid IP or domain name.
+Decodes a URI string per **RFC-3986** with basic validity checking and IDN support — the inverse of [`encodeURIString`](#encoders).
 
-**Support**:
+**Parameters**
 
-- IDNs: returns URI with its Punydecoded host (Unicode serialization of the domain), if any;
-- lower and upper case.
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `uri` | `string` | *(required)* | The URI to decode. |
+| `options.lowercase` | `boolean` | `false` | Lowercase the entire URI including path, query, and fragment. |
 
-**Note**:
+**Returns** — `string`. The decoded URI.
 
-- if one of `userinfo`, `path`, `query` or `fragment` component cannot be decoded, it will be ignored;
-- native function `decodeURI` does not support IDNs and cannot properly work with `encodeURI` since the function is based on an outdated standard;
-- to stay fully **RFC-3986** compliant, scheme and host are put in lowercase;
-- to only use with [encodeURIString](#encodeuristringuri-options).
+**Throws** — `URIError` with one of: `URI_INVALID_TYPE`, `URI_MISSING_SCHEME`, `URI_EMPTY_SCHEME`, `URI_MISSING_PATH`, `URI_INVALID_PATH`, `URI_INVALID_HOST`, `URI_INVALID_SCHEME_CHAR`, `URI_INVALID_PORT`.
 
-<br/>
+**Notes**
 
-**Based on**:
+- A component that cannot be decoded is silently passed through (preserves the encoded form).
+- IDN hosts are returned in Unicode form (Punydecoded).
+- See [Limitations](#limitations) for the `lowercase` flag's scope.
 
-- __<a href="https://tools.ietf.org/html/rfc3986" target="_blank">RFC-3986</a>__.
+**Examples**
 
-<br/>
+```ts
+decodeURIString('http://user%:pass@xn--fiq228c.com/%?query=%E0%A5%90#anch#or');
+// 'http://中文.com/?query=ॐ'
 
-- `uri` **<String\>**
-- `options` **<Object\>**:
-  - `lowercase` **<Boolean\>** Whether the uri should be returned in lowercase. *Default*: `false`
-- Returns: **<String\>**
-- Throws: **<URIError\>** Error codes:
-  - `URI_INVALID_TYPE`
-  - `URI_MISSING_SCHEME`
-  - `URI_EMPTY_SCHEME`
-  - `URI_MISSING_PATH`
-  - `URI_INVALID_PATH`
-  - `URI_INVALID_HOST`
-  - `URI_INVALID_SCHEME_CHAR`
-  - `URI_INVALID_PORT`
+decodeURIString('HTTPS://WWW.xn--fiq228c.COM./Over/There?a=B&b=c#Anchor');
+// 'https://www.中文.com./Over/There?a=B&b=c#Anchor'
 
-<br/>
-
-**Examples**:
-
-```javascript
-decodeURIString(); // throws URIError with code URI_INVALID_TYPE
-decodeURIString('://example.com'); // throws URIError with code URI_MISSING_SCHEME
-decodeURIString('http:////bar'); // throws URIError with code URI_INVALID_PATH
-decodeURIString('http://xn--iñvalid.com'); // throws URIError with code URI_INVALID_HOST
-decodeURIString('hôtp:bar'); // throws URIError with code URI_INVALID_SCHEME_CHAR
-decodeURIString('http://bar.com:80g80'); // throws URIError with code URI_INVALID_PORT
-
-decodeURIString('http://user%:pass@xn--fiq228c.com/%?query=%E0%A5%90#anch#or'); // 'http://中文.com/?query=ॐ'
-decodeURIString('HTTPS://WWW.xn--fiq228c.COM./Over/There?a=B&b=c#Anchor'); // 'https://www.中文.com./Over/There?a=B&b=c#Anchor'
-decodeURIString('HTTPS://WWW.xn--fiq228c.COM./Over/There?a=B&b=c#Anchor', { lowercase: true }); // 'https://www.中文.com./over/there?a=b&b=c#anchor'
-decodeURIString('foo://us%C3%ABr:p%C3%A2ss@bar.baz:8080/Ov%C3%ABr%20There?%C3%B9=B&b=c#Anch%C3%B4r'); // 'foo://usër:pâss@bar.baz:8080/Ovër There?ù=B&b=c#Anchôr'
+decodeURIString('foo://us%C3%ABr:p%C3%A2ss@bar.baz:8080/Ov%C3%ABr%20There?%C3%B9=B&b=c#Anch%C3%B4r');
+// 'foo://usër:pâss@bar.baz:8080/Ovër There?ù=B&b=c#Anchôr'
 ```
 
-### decodeWebURL(uri, options)
+</details>
 
-Decode an URI string with basic checking based on **RFC-3986** standard applied to HTTP and HTTPS URLs.
+<details>
+<summary><em>decodeWebURL(uri, options)</em></summary>
 
-Uses __[a fixed decodeURI function](#decodeuristringuri-options)__ to be **RFC-3986** compliant.
+<br>
 
-**Checked**:
+Decodes an HTTP or HTTPS URL per **RFC-3986** on top of [`decodeURIString`](#decoders) — the inverse of [`encodeWebURL`](#encoders).
 
-- scheme must be `http`/`HTTP` or `https`/`HTTPS`;
-- path is required, can be empty;
-- authority is required;
-- port, if any, must be an integer between 0 - 65535;
-- host must be a valid IP or domain name;
-- URL must be less than 2048 characters.
+**Adds**
 
-**Support**:
+- `scheme` must be `http` / `HTTP` or `https` / `HTTPS` — else `URI_INVALID_SCHEME`.
+- `authority` is required — else `URI_MISSING_AUTHORITY`.
+- URL must be shorter than 2,048 characters — else `URI_MAX_LENGTH_URL`.
 
-- IDNs: returns URI with its Punydecoded host (Unicode serialization of the domain), if any;
-- lower and upper case.
+**Examples**
 
-**Note**:
-
-- if one of `userinfo`, `path`, `query` or `fragment` component cannot be decoded, it will be ignored;
-- native function `decodeURI` does not support IDNs and cannot properly work with `encodeURI` since the function is based on an outdated standard;
-- to stay fully **RFC-3986** compliant, scheme and host are put in lowercase;
-- to only use with [encodeWebURL](#encodeweburluri-options).
-
-<br/>
-
-**Based on**:
-
-- __<a href="https://tools.ietf.org/html/rfc3986" target="_blank">RFC-3986</a>__.
-
-<br/>
-
-- `uri` **<String\>**
-- `options` **<Object\>**:
-  - `lowercase` **<Boolean\>** Whether the uri should be returned in lowercase. *Default*: `false`
-- Returns: **<String\>**
-- Throws: **<URIError\>** Error codes:
-  - `URI_INVALID_TYPE`
-  - `URI_MISSING_SCHEME`
-  - `URI_EMPTY_SCHEME`
-  - `URI_MISSING_PATH`
-  - `URI_INVALID_PATH`
-  - `URI_INVALID_HOST`
-  - `URI_INVALID_SCHEME`
-  - `URI_INVALID_PORT`
-  - `URI_MISSING_AUTHORITY`
-  - `URI_MAX_LENGTH_URL`
-
-<br/>
-
-**Examples**:
-
-```javascript
-decodeWebURL(); // throws URIError with code URI_INVALID_TYPE
-decodeWebURL('://example.com'); // throws URIError with code URI_MISSING_SCHEME
-decodeWebURL('http:////bar'); // throws URIError with code URI_INVALID_PATH
-decodeWebURL('http://xn--iñvalid.com'); // throws URIError with code URI_INVALID_HOST
-decodeWebURL('ftp://bar.com'); // throws URIError with code URI_INVALID_SCHEME
-decodeWebURL('hôtp://bar.com'); // throws URIError with code URI_INVALID_SCHEME
-decodeWebURL('http://bar.com:80g80'); // throws URIError with code URI_INVALID_PORT
-decodeWebURL('http:isbn:0-486-27557-4'); // throws URIError with code URI_MISSING_AUTHORITY
-decodeWebURL(`http://example.com/${'path'.repeat(2040)}`); // throws URIError with code URI_MAX_LENGTH_URL
-
-decodeWebURL('http://user%:pass@xn--fiq228c.com/%?query=%E0%A5%90#anch#or'); // 'http://中文.com/?query=ॐ'
-decodeWebURL('HTTPS://WWW.xn--fiq228c.COM./Over/There?a=B&b=c#Anchor'); // 'https://www.中文.com./Over/There?a=B&b=c#Anchor'
-decodeWebURL('HTTPS://WWW.xn--fiq228c.COM./Over/There?a=B&b=c#Anchor', { lowercase: true }); // 'https://www.中文.com./over/there?a=b&b=c#anchor'
-decodeWebURL('http://us%C3%ABr:p%C3%A2ss@bar.baz:8080/Ov%C3%ABr%20There?%C3%B9=B&b=c#Anch%C3%B4r'); // 'http://usër:pâss@bar.baz:8080/Ovër There?ù=B&b=c#Anchôr'
+```ts
+decodeWebURL('HTTPS://WWW.xn--fiq228c.COM./Over/There?a=B&b=c#Anchor');
+// 'https://www.中文.com./Over/There?a=B&b=c#Anchor'
 ```
 
-### decodeSitemapURL(uri, options)
+</details>
 
-Decode an URI string with basic checking based on **RFC-3986** standard applied to HTTP and HTTPS URLs and sitemap requirements regarding escape codes to decode.
+<details>
+<summary><em>decodeSitemapURL(uri, options)</em></summary>
 
-Uses __[a fixed decodeURI function](#decodeuristringuri-options)__ to be **RFC-3986** compliant.
+<br>
 
-**Checked**:
+Decodes an HTTP or HTTPS URL coming from an XML sitemap — the inverse of [`encodeSitemapURL`](#encoders). Sitemap escape codes are converted back to their characters.
 
-- scheme must be `http`/`HTTP` or `https`/`HTTPS`;
-- path is required, can be empty;
-- authority is required;
-- port, if any, must be an integer between 0 - 65535;
-- host must be a valid IP or domain name;
-- URL must be less than 2048 characters.
+**Examples**
 
-**Support**:
+```ts
+decodeSitemapURL('HTTP://bar.BAZ/IT&apos;S%20OVER%2Athere%2A?a=b&amp;c=d');
+// "http://bar.baz/IT'S OVER*there*?a=b&c=d"
 
-- Sitemap's escape codes, see __[checkHttpSitemapURL](#checkhttpsitemapurluri)__;
-- IDNs: returns URI with its Punydecoded host (Unicode serialization of the domain), if any;
-- lower and upper case.
-
-**Note**:
-
-- if one of `userinfo`, `path`, `query` or `fragment` component cannot be decoded, it will be ignored;
-- native function `decodeURI` does not support IDNs and cannot properly work with `encodeURI` since the function is based on an outdated standard;
-- to stay fully **RFC-3986** compliant, scheme and host are put in lowercase;
-- to only use with [encodeSitemapURL](#encodesitemapurluri).
-
-<br/>
-
-**Based on**:
-
-- __<a href="https://tools.ietf.org/html/rfc3986" target="_blank">RFC-3986</a>__;
-- __<a href="https://support.google.com/webmasters/answer/183668?hl=en&ref_topic=4581190" target="_blank">Google: Build and submit a sitemap</a>__.
-
-<br/>
-
-- `uri` **<String\>**
-- `options` **<Object\>**:
-  - `lowercase` **<Boolean\>** Whether the uri should be returned in lowercase. *Default*: `false`
-- Returns: **<String\>**
-- Throws: **<URIError\>** Error codes:
-  - `URI_INVALID_TYPE`
-  - `URI_MISSING_SCHEME`
-  - `URI_EMPTY_SCHEME`
-  - `URI_MISSING_PATH`
-  - `URI_INVALID_PATH`
-  - `URI_INVALID_HOST`
-  - `URI_INVALID_SCHEME`
-  - `URI_INVALID_PORT`
-  - `URI_MISSING_AUTHORITY`
-  - `URI_MAX_LENGTH_URL`
-
-<br/>
-
-**Examples**:
-
-```javascript
-decodeSitemapURL(); // throws URIError with code URI_INVALID_TYPE
-decodeSitemapURL('://example.com'); // throws URIError with code URI_MISSING_SCHEME
-decodeSitemapURL('http:////bar'); // throws URIError with code URI_INVALID_PATH
-decodeSitemapURL('http://xn--iñvalid.com'); // throws URIError with code URI_INVALID_HOST
-decodeSitemapURL('ftp://bar.com'); // throws URIError with code URI_INVALID_SCHEME
-decodeSitemapURL('hôtp://bar.com'); // throws URIError with code URI_INVALID_SCHEME
-decodeSitemapURL('http://bar.com:80g80'); // throws URIError with code URI_INVALID_PORT
-decodeSitemapURL('http:isbn:0-486-27557-4'); // throws URIError with code URI_MISSING_AUTHORITY
-decodeSitemapURL(`http://example.com/${'path'.repeat(2040)}`); // throws URIError with code URI_MAX_LENGTH_URL
-
-decodeSitemapURL('http://user%:pass@xn--fiq228c.com/%?query=%E0%A5%90#anch#or'); // 'http://中文.com/?query=ॐ'
-decodeSitemapURL('HTTP://bar.BAZ/IT&apos;S%20OVER%2Athere%2A?a=b&amp;c=d'); // 'http://bar.baz/IT\'S OVER*there*?a=b&c=d'
-decodeSitemapURL('http://bar.baz/IT&apos;S%20OVER%2Athere%2A?A=b&amp;c=D', { lowercase: true }); // 'http://bar.baz/it\'s over*there*?a=b&c=d'
+decodeSitemapURL('http://bar.baz/IT&apos;S%20OVER%2Athere%2A?A=b&amp;c=D', { lowercase: true });
+// "http://bar.baz/it's over*there*?a=b&c=d"
 ```
 
+</details>
 
 ## Errors
 
-### Object structure
+Errors emitted by `@coroboros/uri` are native `URIError` instances with an additional `code` property:
 
-Errors emitted by *@coroboros/uri* are native URIError with an additional *code* property:
-
-```javascript
+```ts
 {
-  name,
-  code,
-  message,
-  stack,
+  name: 'URIError',
+  code: URIErrorCode,
+  message: string,
+  stack: string,
 }
 ```
 
-### Codes
+The `code` field is a stable string discriminant safe for runtime branching.
 
-<table style="text-align: left; vertical-align: center">
-  <tr>
-    <th style="text-align: center;">name</th>
-    <th style="text-align: center;">code</th>
-    <th style="text-align: center;">description</th>
-    <th style="text-align: center;">module</th>
-  </tr>
+<details>
+<summary><em>Error codes</em></summary>
 
-  <tr>
-    <td rowspan="19"><i>URIError</i></td>
-  </tr>
+<br>
 
-  <tr>
-    <td>URI_INVALID_TYPE</td>
-    <td>URI variable type is not valid</td>
-    <td><code>src/checkers</code></td>
-  </tr>
+| Code | Description | Module |
+| --- | --- | --- |
+| `URI_INVALID_TYPE` | URI variable type is not valid. | `src/checkers` |
+| `URI_MISSING_SCHEME` | URI scheme is missing. | `src/checkers` |
+| `URI_EMPTY_SCHEME` | URI scheme is empty. | `src/checkers` |
+| `URI_INVALID_SCHEME` | URI scheme is not valid. | `src/checkers`, `src/decoders`, `src/encoders` |
+| `URI_INVALID_SCHEME_CHAR` | URI scheme contains an invalid character. | `src/checkers`, `src/decoders`, `src/encoders` |
+| `URI_MISSING_PATH` | URI path is missing. | `src/checkers` |
+| `URI_INVALID_PATH` | URI path is not valid per **RFC-3986**. | `src/checkers` |
+| `URI_MISSING_AUTHORITY` | URI authority is missing. | `src/checkers`, `src/decoders`, `src/encoders` |
+| `URI_INVALID_HOST` | URI host is not a valid IP or domain. | `src/checkers` |
+| `URI_INVALID_PORT` | URI port is not a number. | `src/checkers`, `src/decoders`, `src/encoders` |
+| `URI_INVALID_CHAR` | URI contains an invalid character. | `src/checkers` |
+| `URI_INVALID_USERINFO_CHAR` | URI userinfo contains an invalid character. | `src/checkers` |
+| `URI_INVALID_PATH_CHAR` | URI path contains an invalid character. | `src/checkers` |
+| `URI_INVALID_QUERY_CHAR` | URI query contains an invalid character. | `src/checkers` |
+| `URI_INVALID_FRAGMENT_CHAR` | URI fragment contains an invalid character. | `src/checkers` |
+| `URI_INVALID_PERCENT_ENCODING` | A percent-encoding character is not valid. | `src/checkers` |
+| `URI_INVALID_SITEMAP_ENCODING` | URI contains an invalid sitemap escape code. | `src/checkers` |
+| `URI_MAX_LENGTH_URL` | Maximum URL length of 2,048 characters has been reached. | `src/checkers` |
 
-  <tr>
-    <td>URI_MISSING_SCHEME</td>
-    <td>URI scheme is missing</td>
-    <td><code>src/checkers</code></td>
-  </tr>
+</details>
 
-  <tr>
-    <td>URI_EMPTY_SCHEME</td>
-    <td>URI scheme is empty</td>
-    <td><code>src/checkers</code></td>
-  </tr>
+## Limitations
 
-  <tr>
-    <td>URI_INVALID_SCHEME</td>
-    <td>URI scheme is not valid</td>
-    <td><code>src/checkers</code><br/><code>src/decoders</code><br/><code>src/encoders</code></td>
-  </tr>
-
-  <tr>
-    <td>URI_INVALID_SCHEME_CHAR</td>
-    <td>URI scheme contains an invalid character</td>
-    <td><code>src/checkers</code><br/><code>src/decoders</code><br/><code>src/encoders</code></td>
-  </tr>
-
-  <tr>
-    <td>URI_MISSING_PATH</td>
-    <td>URI path is missing</td>
-    <td><code>src/checkers</code></td>
-  </tr>
-
-  <tr>
-    <td>URI_INVALID_PATH</td>
-    <td>URI path is not valid based on RFC-3986</td>
-    <td><code>src/checkers</code></td>
-  </tr>
-
-  <tr>
-    <td>URI_MISSING_AUTHORITY</td>
-    <td>URI authority is missing</td>
-    <td><code>src/checkers</code><br/><code>src/decoders</code><br/><code>src/encoders</code></td>
-  </tr>
-
-  <tr>
-    <td>URI_INVALID_HOST</td>
-    <td>URI host is not valid IP or domain</td>
-    <td><code>src/checkers</code></td>
-  </tr>
-
-  <tr>
-    <td>URI_INVALID_PORT</td>
-    <td>URI port is not a number</td>
-    <td><code>src/checkers</code><br/><code>src/decoders</code><br/><code>src/encoders</code></td>
-  </tr>
-
-  <tr>
-    <td>URI_INVALID_CHAR</td>
-    <td>URI contains an invalid character</td>
-    <td><code>src/checkers</code></td>
-  </tr>
-
-  <tr>
-    <td>URI_INVALID_USERINFO_CHAR</td>
-    <td>URI userinfo contains an invalid character</td>
-    <td><code>src/checkers</code></td>
-  </tr>
-
-  <tr>
-    <td>URI_INVALID_PATH_CHAR</td>
-    <td>URI path contains an invalid character</td>
-    <td><code>src/checkers</code></td>
-  </tr>
-
-  <tr>
-    <td>URI_INVALID_QUERY_CHAR</td>
-    <td>URI query contains an invalid character</td>
-    <td><code>src/checkers</code></td>
-  </tr>
-
-  <tr>
-    <td>URI_INVALID_FRAGMENT_CHAR</td>
-    <td>URI fragment contains an invalid character</td>
-    <td><code>src/checkers</code></td>
-  </tr>
-
-  <tr>
-    <td>URI_INVALID_PERCENT_ENCODING</td>
-    <td>A percent-encoding character is not valid</td>
-    <td><code>src/checkers</code></td>
-  </tr>
-
-  <tr>
-    <td>URI_INVALID_SITEMAP_ENCODING</td>
-    <td>URI contains an invalid sitemap escape code</td>
-    <td><code>src/checkers</code></td>
-  </tr>
-
-  <tr>
-    <td>URI_MAX_LENGTH_URL</td>
-    <td>Maximum URL allowed length of 2048 characters has been reached</td>
-    <td><code>src/checkers</code></td>
-  </tr>
-
-</table>
+- A present-but-empty query or fragment (a bare `?` or `#`) is preserved and round-trips, distinct from an absent one (**RFC-3986 §5.3**).
+- A port must be a string of ASCII digits (**RFC-3986 §3.2.3**) — values like `0x1F` are rejected.
+- `userinfo` is delimited by the last `@`, and a non-IPv6 host/port by the last `:` (**RFC-3986 §3.2**).
+- Percent-encoding hex is case-insensitive: `%3a` and `%3A` are both accepted (**RFC-3986 §6.2.2.1**).
+- Inside a URI, an IPv6 zone identifier must use the `%25` delimiter and a non-empty `ZoneID` of `unreserved` / `pct-encoded` characters (**RFC 6874 §2**). The standalone [`isIPv6`](#validators) validator stays lenient.
+- `encodeSitemapURL` escapes all five XML entities `& ' " < >`, and a Sitemap URL must be shorter than 2,048 characters (sitemaps.org). For example, `encodeSitemapURL('http://example.com/a&b<c>d')` returns `'http://example.com/a&amp;b&lt;c&gt;d'`.
+- This is a strict **RFC-3986** toolkit, not a WHATWG URL parser — it does not apply WHATWG host/IPv4 leniency.
+- IPv6 addresses are not canonicalized to **RFC 5952** form.
+- The `lowercase` option lowercases the entire input including path, query, and fragment, which are case-sensitive per **RFC-3986 §6.2.2.1**. Use `lowercase` for Sitemap or convenience, not as RFC normalization. By default only scheme and host are lowercased, which is the RFC-compliant behavior.
 
 ## Contributing
 
@@ -1523,6 +982,7 @@ Bug reports and PRs welcome.
 - Open an issue before submitting non-trivial PRs.
 - Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 - Run `pnpm lint && pnpm typecheck && pnpm test` before pushing.
+- Run `pnpm bench` against `bench/baseline.md` when touching parser, encoders, or decoders — no regression beyond 10 % on any bucket at fixed feature set.
 - Target the `main` branch.
 
 ## License

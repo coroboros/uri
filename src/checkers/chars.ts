@@ -315,8 +315,12 @@ const isSitemapQueryOrFragmentChar = function isSitemapQueryOrFragmentChar(
  *
  * Check percent encoding legal ascii codes according to RFC-3986 https://tools.ietf.org/html/rfc3986#section-2.1.
  *
+ * HEXDIG is case-insensitive: %3a and %3A are equivalent
+ * (RFC-3986 https://tools.ietf.org/html/rfc3986#section-6.2.2.1).
+ *
  * 48 to 57       0-9
  * 65 to 70       A-F
+ * 97 to 102      a-f
  */
 const isPercentEncodingChar = function isPercentEncodingChar(char: string): boolean {
   if (!is(String, char)) {
@@ -325,7 +329,7 @@ const isPercentEncodingChar = function isPercentEncodingChar(char: string): bool
 
   const code = char.charCodeAt(0);
 
-  return (code >= 48 && code <= 57) || (code >= 65 && code <= 70);
+  return (code >= 48 && code <= 57) || (code >= 65 && code <= 70) || (code >= 97 && code <= 102);
 };
 
 export {

@@ -158,6 +158,12 @@ describe('#decoders', () => {
       expectThrowWithCode(() => decodeURIString('ht°p://example.com'), 'URI_INVALID_SCHEME_CHAR');
     });
 
+    it('should lowercase the whole uri when the lowercase option is true', () => {
+      expect(decodeURIString('HTTP://EXAMPLE.COM/P%20X', { web: true, lowercase: true })).toBe(
+        'http://example.com/p x',
+      );
+    });
+
     it('should throw an uri error if scheme is not http or https when option is web or sitemap', () => {
       expectThrowWithCode(
         () => decodeURIString('httpp://www.example.com', { web: true }),
@@ -1215,6 +1221,14 @@ describe('#decoders', () => {
       );
       expect(decodeSitemapURL('http://example.com/there?a=5&amp;b=11#anc%20hor')).toBe(
         'http://example.com/there?a=5&b=11#anc hor',
+      );
+    });
+
+    // sitemaps.org: decoding inverts all five XML entities — &amp; &apos;
+    // &quot; &gt; &lt; — round-tripping encodeSitemapURL.
+    it('should decode all five sitemap XML entities (sitemaps.org)', () => {
+      expect(decodeSitemapURL('http://example.com/a&amp;b&apos;c&quot;d&lt;e&gt;f')).toBe(
+        'http://example.com/a&b\'c"d<e>f',
       );
     });
 

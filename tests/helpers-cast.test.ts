@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { cast } from '../src/helpers/index.js';
 
-const { num, number, int, integer } = cast;
+const { num, number, int, integer, isPort } = cast;
 
 describe('#cast helper', () => {
   describe('when using number', () => {
@@ -482,6 +482,31 @@ describe('#cast helper', () => {
 
     it('should return undefined when casting a number whose specified range is not valid', () => {
       expect(int(5, { ge: 4, le: 2 })).toBeUndefined();
+    });
+  });
+
+  // RFC-3986 §3.2.3: port = *DIGIT. Only ASCII digits (or absent) are a port;
+  // JS Number() coercion of hex/scientific/whitespace must be rejected.
+  describe('when using isPort', () => {
+    it('should be true for absent or digit-only values', () => {
+      expect(isPort(null)).toBe(true);
+      expect(isPort(undefined)).toBe(true);
+      expect(isPort('')).toBe(true);
+      expect(isPort('0')).toBe(true);
+      expect(isPort('8080')).toBe(true);
+      expect(isPort(8080)).toBe(true);
+      expect(isPort('65535')).toBe(true);
+    });
+
+    it('should be false for non-digit ports coercible by Number()', () => {
+      expect(isPort('0x1F')).toBe(false);
+      expect(isPort('1e3')).toBe(false);
+      expect(isPort('0b11')).toBe(false);
+      expect(isPort('0o17')).toBe(false);
+      expect(isPort(' 80 ')).toBe(false);
+      expect(isPort('80g42')).toBe(false);
+      expect(isPort('-1')).toBe(false);
+      expect(isPort('8.0')).toBe(false);
     });
   });
 });

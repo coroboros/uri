@@ -1,0 +1,28 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+      - '[0-9]+.[0-9]+.[0-9]+-*'
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref_type != 'tag' }}
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  ci:
+    uses: coroboros/ci/.github/workflows/javascript-npm-packages.yml@v0
+    secrets:
+      NPM_CONFIG_FILE: ${{ secrets.NPM_CONFIG_FILE }}
+      NPM_EXTRA_CONFIG: ${{ secrets.NPM_EXTRA_CONFIG }}
+      NPM_PACKAGE_REGISTRY: ${{ secrets.NPM_PACKAGE_REGISTRY }}
+      NPM_PACKAGE_PROXY_REGISTRY: ${{ secrets.NPM_PACKAGE_PROXY_REGISTRY }}
+      NPM_PACKAGE_REGISTRY_TOKEN: ${{ secrets.NPM_PACKAGE_REGISTRY_TOKEN }}

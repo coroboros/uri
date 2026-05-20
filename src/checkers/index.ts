@@ -17,7 +17,8 @@
  */
 import { maxLengthURL, maxPortInteger, minPortInteger } from '../config/index.js';
 import { isDomain } from '../domain/index.js';
-import { int } from '../helpers/cast.js';
+import { int, isPort } from '../helpers/cast.js';
+import { fail } from '../helpers/error.js';
 import { exists, is } from '../helpers/object.js';
 import { isIP } from '../ip/index.js';
 import { type ParsedURI, parseURI } from '../parser/index.js';
@@ -33,8 +34,6 @@ import {
   isUserinfoChar,
 } from './chars.js';
 
-type URIErrorWithCode = URIError & { code: string };
-
 export interface CheckedURI extends ParsedURI {
   valid: true;
 }
@@ -45,6 +44,9 @@ export interface CheckedURISyntax extends ParsedURI {
 }
 
 type CharChecker = (char: string, encode?: boolean) => boolean;
+
+// RFC 6874 §2: ZoneID = 1*( unreserved / pct-encoded ). Compiled once.
+const ipv6ZoneIdRegexp = /^(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2})+$/;
 
 /**
  * @func checkPercentEncoding
@@ -58,11 +60,7 @@ const checkPercentEncoding = function checkPercentEncoding(
   stringLen: number,
 ): number {
   if (!is(String, string)) {
-    const error = new URIError(
-      'a string is required when checking for percent encoding',
-    ) as URIErrorWithCode;
-    error.code = 'URI_INVALID_PERCENT_ENCODING';
-    throw error;
+    fail('URI_INVALID_PERCENT_ENCODING', 'a string is required when checking for percent encoding');
   }
 
   const len = is(Number, stringLen) && stringLen >= 0 ? stringLen : string.length;
@@ -74,24 +72,20 @@ const checkPercentEncoding = function checkPercentEncoding(
     // example: %20 or %C3%BC
     if (i + 2 < len) {
       if (!isPercentEncodingChar(string.charAt(i + 1))) {
-        const error = new URIError(
+        fail(
+          'URI_INVALID_PERCENT_ENCODING',
           `invalid percent encoding char '${string.charAt(i + 1)}'`,
-        ) as URIErrorWithCode;
-        error.code = 'URI_INVALID_PERCENT_ENCODING';
-        throw error;
+        );
       } else if (!isPercentEncodingChar(string.charAt(i + 2))) {
-        const error = new URIError(
+        fail(
+          'URI_INVALID_PERCENT_ENCODING',
           `invalid percent encoding char '${string.charAt(i + 2)}'`,
-        ) as URIErrorWithCode;
-        error.code = 'URI_INVALID_PERCENT_ENCODING';
-        throw error;
+        );
       } else {
         offset = 2;
       }
     } else {
-      const error = new URIError('incomplete percent encoding found') as URIErrorWithCode;
-      error.code = 'URI_INVALID_PERCENT_ENCODING';
-      throw error;
+      fail('URI_INVALID_PERCENT_ENCODING', 'incomplete percent encoding found');
     }
   }
 
@@ -110,11 +104,7 @@ const checkSitemapEncoding = function checkSitemapEncoding(
   stringLen: number,
 ): number {
   if (!is(String, string)) {
-    const error = new URIError(
-      'a string is required when checking for sitemap encoding',
-    ) as URIErrorWithCode;
-    error.code = 'URI_INVALID_SITEMAP_ENCODING';
-    throw error;
+    fail('URI_INVALID_SITEMAP_ENCODING', 'a string is required when checking for sitemap encoding');
   }
 
   const len = is(Number, stringLen) && stringLen >= 0 ? stringLen : string.length;
@@ -128,6 +118,7 @@ const checkSitemapEncoding = function checkSitemapEncoding(
     for (let j = 0; j < escapeCodesKeysLen; j += 1) {
       const code = escapeCodesKeys[j];
 
+      /* v8 ignore next 3 -- unreachable: j is bounded by escapeCodesKeys.length so the index is always defined */
       if (code === undefined) {
         break;
       }
@@ -141,11 +132,7 @@ const checkSitemapEncoding = function checkSitemapEncoding(
     }
 
     if (!exists(escapeOffset)) {
-      const error = new URIError(
-        `entity '${string.charAt(i)}' is not properly escaped`,
-      ) as URIErrorWithCode;
-      error.code = 'URI_INVALID_SITEMAP_ENCODING';
-      throw error;
+      fail('URI_INVALID_SITEMAP_ENCODING', `entity '${string.charAt(i)}' is not properly escaped`);
     } else {
       offset = escapeOffset;
     }
@@ -170,16 +157,15 @@ const checkComponent = function checkComponent({
   string,
   sitemap,
 }: {
-  type?: string;
-  string?: string | null;
-  sitemap?: boolean;
+  type?: string | undefined;
+  string?: string | null | undefined;
+  sitemap?: boolean | undefined;
 } = {}): boolean {
   if (!['userinfo', 'path', 'query', 'fragment'].includes(type as string)) {
-    const error = new URIError(
+    fail(
+      'URI_INVALID_CHECKING_COMPONENT',
       `unable to check pathqf, got '${type}' component to check`,
-    ) as URIErrorWithCode;
-    error.code = 'URI_INVALID_CHECKING_COMPONENT';
-    throw error;
+    );
   }
 
   // path is always at least empty here, userinfo, query and fragment are not required
@@ -202,15 +188,17 @@ const checkComponent = function checkComponent({
     case 'fragment':
       checkCharFunc = checkSitemap ? isSitemapQueryOrFragmentChar : isQueryOrFragmentChar;
       break;
+    /* v8 ignore next -- unreachable: type is validated to one of the four cases before the switch */
     default:
   }
 
   for (let i = 0; i < len; i += 1) {
     // check character is valid
     if (!checkCharFunc(string.charAt(i))) {
-      const error = new URIError(`invalid ${type} char '${string.charAt(i)}'`) as URIErrorWithCode;
-      error.code = `URI_INVALID_${(type as string).toUpperCase()}_CHAR`;
-      throw error;
+      fail(
+        `URI_INVALID_${(type as string).toUpperCase()}_CHAR`,
+        `invalid ${type} char '${string.charAt(i)}'`,
+      );
     }
 
     // check percent encodings
@@ -237,24 +225,18 @@ const checkComponent = function checkComponent({
  */
 const checkSchemeChars = function checkSchemeChars(scheme: string, len?: number): boolean {
   if (!is(String, scheme)) {
-    const error = new URIError('scheme must be a string') as URIErrorWithCode;
-    error.code = 'URI_INVALID_SCHEME';
-    throw error;
+    fail('URI_INVALID_SCHEME', 'scheme must be a string');
   }
 
   const schemeLen = is(Number, len) && len > 0 ? len : scheme.length;
 
   if (schemeLen <= 0) {
-    const error = new URIError('scheme cannot be empty') as URIErrorWithCode;
-    error.code = 'URI_INVALID_SCHEME';
-    throw error;
+    fail('URI_INVALID_SCHEME', 'scheme cannot be empty');
   }
 
   for (let i = 0; i < schemeLen; i += 1) {
     if (!isSchemeChar(scheme.charAt(i), { start: i === 0 })) {
-      const error = new URIError(`invalid scheme char '${scheme.charAt(i)}'`) as URIErrorWithCode;
-      error.code = 'URI_INVALID_SCHEME_CHAR';
-      throw error;
+      fail('URI_INVALID_SCHEME_CHAR', `invalid scheme char '${scheme.charAt(i)}'`);
     }
   }
 
@@ -268,15 +250,11 @@ const checkSchemeChars = function checkSchemeChars(scheme: string, len?: number)
  */
 const checkLowercase = function checkLowercase(uri: string): boolean {
   if (!is(String, uri)) {
-    const error = new URIError('uri must be a string') as URIErrorWithCode;
-    error.code = 'URI_INVALID_TYPE';
-    throw error;
+    fail('URI_INVALID_TYPE', 'uri must be a string');
   }
 
   if (uri.toLowerCase() !== uri) {
-    const error = new URIError('uri cannot contain any uppercase characters') as URIErrorWithCode;
-    error.code = 'URI_INVALID_CHAR';
-    throw error;
+    fail('URI_INVALID_CHAR', 'uri cannot contain any uppercase characters');
   }
 
   return true;
@@ -298,9 +276,7 @@ const checkLowercase = function checkLowercase(uri: string): boolean {
  */
 const checkURISyntax = function checkURISyntax(uri: string): CheckedURISyntax {
   if (!is(String, uri)) {
-    const error = new URIError('uri must be a string') as URIErrorWithCode;
-    error.code = 'URI_INVALID_TYPE';
-    throw error;
+    fail('URI_INVALID_TYPE', 'uri must be a string');
   }
 
   // parse uri and check scheme, authority, pathname and slashes
@@ -324,48 +300,58 @@ const checkURISyntax = function checkURISyntax(uri: string): CheckedURISyntax {
 
   // scheme (required)
   if (!is(String, scheme)) {
-    const error = new URIError('uri scheme is required') as URIErrorWithCode;
-    error.code = 'URI_MISSING_SCHEME';
-    throw error;
+    fail('URI_MISSING_SCHEME', 'uri scheme is required');
+    /* v8 ignore start -- unreachable: parseURI yields a null or non-empty scheme, never an empty string */
   } else if (schemeLen <= 0) {
-    const error = new URIError('uri scheme must not be empty') as URIErrorWithCode;
-    error.code = 'URI_EMPTY_SCHEME';
-    throw error;
+    fail('URI_EMPTY_SCHEME', 'uri scheme must not be empty');
   }
+  /* v8 ignore stop */
 
   // path (required), can be an empty string
+  /* v8 ignore next 3 -- unreachable: the Appendix-B regexp always captures a string path */
   if (!is(String, path)) {
-    const error = new URIError('uri path is required') as URIErrorWithCode;
-    error.code = 'URI_MISSING_PATH';
-    throw error;
+    fail('URI_MISSING_PATH', 'uri path is required');
   }
 
   // path: if authority is present path must be empty or start with /
   if (is(String, authority) && authority.length > 0) {
-    if (!(path === '' || path.startsWith('/'))) {
-      const error = new URIError(
-        "path must be empty or start with '/' when authority is present",
-      ) as URIErrorWithCode;
-      error.code = 'URI_INVALID_PATH';
-      throw error;
+    /* v8 ignore next 3 -- unreachable: when authority is present the Appendix-B regexp makes path empty or '/'-prefixed */
+    if (!(path === '' || (path as string).startsWith('/'))) {
+      fail('URI_INVALID_PATH', "path must be empty or start with '/' when authority is present");
     }
-  } else if (path.startsWith('//')) {
+  } else if ((path as string).startsWith('//')) {
     // if authority is not present path must not start with //
-    const error = new URIError(
-      "path must not start with '//' when authority is not present",
-    ) as URIErrorWithCode;
-    error.code = 'URI_INVALID_PATH';
-    throw error;
+    fail('URI_INVALID_PATH', "path must not start with '//' when authority is not present");
   }
 
   // check for inconsistent authority (original vs parsed) which means
   // host parsed was actually wrong
   if (!exists(authority) && exists(authorityPunydecoded)) {
-    const error = new URIError(
-      `host must be a valid ip or domain name, got '${hostPunydecoded}'`,
-    ) as URIErrorWithCode;
-    error.code = 'URI_INVALID_HOST';
-    throw error;
+    fail('URI_INVALID_HOST', `host must be a valid ip or domain name, got '${hostPunydecoded}'`);
+  }
+
+  // RFC 6874: an IPv6 zone identifier in a URI MUST use the percent-encoded
+  // "%25" delimiter and the ZoneID must be a non-empty 1*( unreserved / pct-encoded )
+  if (is(String, host) && host.includes(':')) {
+    const zoneAt = host.indexOf('%');
+
+    if (zoneAt !== -1) {
+      const zoneId = host.slice(zoneAt + 3);
+
+      if (host.slice(zoneAt, zoneAt + 3) !== '%25') {
+        fail(
+          'URI_INVALID_HOST',
+          `IPv6 zone identifier must use the '%25' delimiter, got '${host}'`,
+        );
+      }
+
+      if (zoneId === '' || !ipv6ZoneIdRegexp.test(zoneId)) {
+        fail(
+          'URI_INVALID_HOST',
+          `IPv6 zone identifier must be a non-empty RFC 6874 ZoneID, got '${host}'`,
+        );
+      }
+    }
   }
 
   return {
@@ -408,7 +394,7 @@ const checkURISyntax = function checkURISyntax(uri: string): CheckedURISyntax {
  */
 const checkURI = function checkURI(
   uri: string,
-  { sitemap }: { sitemap?: boolean } = {},
+  { sitemap }: { sitemap?: boolean | undefined } = {},
 ): CheckedURI {
   // check uri type and syntax
   const {
@@ -437,20 +423,18 @@ const checkURI = function checkURI(
 
     // check host is a valid ip first (RFC-3986) or a domain name
     if (!isIP(host as string) && !isDomain(host as string)) {
-      const error = new URIError(
-        `host must be a valid ip or domain name, got '${host}'`,
-      ) as URIErrorWithCode;
-      error.code = 'URI_INVALID_HOST';
-      throw error;
+      fail('URI_INVALID_HOST', `host must be a valid ip or domain name, got '${host}'`);
     }
 
-    // check port is a number if any
-    if (exists(port) && int(port, { ge: minPortInteger, le: maxPortInteger }) === undefined) {
-      const error = new URIError(
+    // check port is a valid RFC-3986 *DIGIT and in range if any
+    if (
+      exists(port) &&
+      (!isPort(port) || int(port, { ge: minPortInteger, le: maxPortInteger }) === undefined)
+    ) {
+      fail(
+        'URI_INVALID_PORT',
         `port must be an integer between ${minPortInteger}-${maxPortInteger}, got '${port}'`,
-      ) as URIErrorWithCode;
-      error.code = 'URI_INVALID_PORT';
-      throw error;
+      );
     }
   }
 
@@ -494,7 +478,11 @@ const checkURI = function checkURI(
  */
 const checkHttpURL = function checkHttpURL(
   uri: string,
-  { https, web, sitemap }: { https?: boolean; web?: boolean; sitemap?: boolean } = {},
+  {
+    https,
+    web,
+    sitemap,
+  }: { https?: boolean | undefined; web?: boolean | undefined; sitemap?: boolean | undefined } = {},
 ): CheckedURI {
   // precheck case for sitemap only
   if (sitemap === true) {
@@ -528,27 +516,18 @@ const checkHttpURL = function checkHttpURL(
 
   // scheme
   if (!schemesToCheck.includes(scheme as string)) {
-    const error = new URIError(
-      `scheme must be ${schemesToCheck.join(' or ')}, got '${scheme}'`,
-    ) as URIErrorWithCode;
-    error.code = 'URI_INVALID_SCHEME';
-    throw error;
+    fail('URI_INVALID_SCHEME', `scheme must be ${schemesToCheck.join(' or ')}, got '${scheme}'`);
   }
 
   // authority
   if (!is(String, authority)) {
-    const error = new URIError('authority is required') as URIErrorWithCode;
-    error.code = 'URI_MISSING_AUTHORITY';
-    throw error;
+    fail('URI_MISSING_AUTHORITY', 'authority is required');
   }
 
   // max length
-  if (is(String, href) && href.length > maxLengthURL) {
-    const error = new URIError(
-      `max URL length of ${maxLengthURL} reached: ${href.length}`,
-    ) as URIErrorWithCode;
-    error.code = 'URI_MAX_LENGTH_URL';
-    throw error;
+  // sitemaps.org: a URL must be strictly less than 2,048 characters
+  if (is(String, href) && href.length >= maxLengthURL) {
+    fail('URI_MAX_LENGTH_URL', `max URL length of ${maxLengthURL} reached: ${href.length}`);
   }
 
   return {

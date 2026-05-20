@@ -542,6 +542,62 @@ describe('#parser', () => {
       expect(parsedURI).toHaveProperty('fragment', null);
       expect(parsedURI).toHaveProperty('href', 'http://user:pass@[fe80::7:8%eth0]:8080/');
     });
+
+    // RFC-3986 §3.2.1: userinfo is delimited by the LAST '@', not the first.
+    // Splitting on the first '@' silently truncates the host (host confusion).
+    it('should split userinfo on the last @ (RFC-3986 §3.2.1)', () => {
+      const parsedURI = parseURI('foo://user:pa@ss@example.com:8042/p?q#f');
+
+      expect(parsedURI).toHaveProperty('userinfo', 'user:pa@ss');
+      expect(parsedURI).toHaveProperty('host', 'example.com');
+      expect(parsedURI).toHaveProperty('port', 8042);
+    });
+
+    // RFC-3986 §3.2.2/§3.2.3: for a non-IPv6 authority the port follows the
+    // LAST ':'; splitting on the first ':' silently truncates the host.
+    it('should split host and port on the last : (RFC-3986 §3.2.2)', () => {
+      const parsedURI = parseURI('foo://a:b:8042/p');
+
+      expect(parsedURI).toHaveProperty('host', null);
+      expect(parsedURI).toHaveProperty('hostPunydecoded', 'a:b');
+      expect(parsedURI).toHaveProperty('authorityPunydecoded', 'a:b:8042');
+    });
+
+    // RFC-3986 §5.3: a present-but-empty query/fragment ('') is distinct
+    // from an absent one (null) and parse → recompose must be idempotent.
+    it('should distinguish a present-empty query/fragment from an absent one (RFC-3986 §5.3)', () => {
+      const withEmptyQuery = parseURI('http://example.com/?');
+      expect(withEmptyQuery).toHaveProperty('query', '');
+      expect(withEmptyQuery).toHaveProperty('href', 'http://example.com/?');
+
+      const withEmptyFragment = parseURI('http://example.com/#');
+      expect(withEmptyFragment).toHaveProperty('fragment', '');
+      expect(withEmptyFragment).toHaveProperty('href', 'http://example.com/#');
+
+      const absent = parseURI('http://example.com/');
+      expect(absent).toHaveProperty('query', null);
+      expect(absent).toHaveProperty('fragment', null);
+      expect(absent).toHaveProperty('href', 'http://example.com/');
+
+      const both = parseURI('http://example.com/?#');
+      expect(both).toHaveProperty('query', '');
+      expect(both).toHaveProperty('fragment', '');
+      expect(both).toHaveProperty('href', 'http://example.com/?#');
+    });
+
+    // RFC-3986 §3.2.3: port = *DIGIT, so an empty port (zero digits) is
+    // syntactically valid — present-but-empty ('') and distinct from an
+    // absent port (null), not an error.
+    it('should keep an empty port present-but-empty, distinct from absent (RFC-3986 §3.2.3)', () => {
+      const emptyPort = parseURI('http://example.com:/path');
+      expect(emptyPort).toHaveProperty('port', '');
+      expect(emptyPort).toHaveProperty('host', 'example.com');
+      expect(emptyPort).toHaveProperty('href', 'http://example.com:/path');
+
+      const absentPort = parseURI('http://example.com/path');
+      expect(absentPort).toHaveProperty('port', null);
+      expect(absentPort).toHaveProperty('href', 'http://example.com/path');
+    });
   });
 
   describe('when using recomposeURI', () => {
@@ -838,7 +894,7 @@ describe('#parser', () => {
       expect(recomposeURI(toRecompose)).toBe('foo://u@example.com/?a=b#anchor');
     });
 
-    it('should ignore query if not at least 1 character', () => {
+    it('should emit ? for a present-empty query, omit it when null (RFC-3986 §5.3)', () => {
       const toRecompose = {
         scheme: 'foo',
         userinfo: null,
@@ -849,7 +905,7 @@ describe('#parser', () => {
         fragment: 'anchor',
       };
 
-      expect(recomposeURI(toRecompose)).toBe('foo://example.com/#anchor');
+      expect(recomposeURI(toRecompose)).toBe('foo://example.com/?#anchor');
 
       toRecompose.query = null;
       expect(recomposeURI(toRecompose)).toBe('foo://example.com/#anchor');
@@ -869,7 +925,7 @@ describe('#parser', () => {
       expect(recomposeURI(toRecompose)).toBe('foo://example.com/?a=b#anchor');
     });
 
-    it('should ignore fragment if not at least 1 character', () => {
+    it('should emit # for a present-empty fragment, omit it when null (RFC-3986 §5.3)', () => {
       const toRecompose = {
         scheme: 'foo',
         userinfo: null,
@@ -880,7 +936,7 @@ describe('#parser', () => {
         fragment: '',
       };
 
-      expect(recomposeURI(toRecompose)).toBe('foo://example.com/');
+      expect(recomposeURI(toRecompose)).toBe('foo://example.com/#');
 
       toRecompose.fragment = null;
       expect(recomposeURI(toRecompose)).toBe('foo://example.com/');
@@ -908,7 +964,7 @@ describe('#parser', () => {
         port: null,
         path: '',
         query: null,
-        fragment: '',
+        fragment: null,
       };
 
       expect(recomposeURI(toRecompose)).toBe('foo://23.71.254.72/');
@@ -922,7 +978,7 @@ describe('#parser', () => {
         port: null,
         path: '',
         query: null,
-        fragment: '',
+        fragment: null,
       };
 
       expect(recomposeURI(toRecompose)).toBe('foo://[::ffff:192.168.1.26]/');

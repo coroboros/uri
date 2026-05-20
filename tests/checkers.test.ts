@@ -117,7 +117,7 @@ describe('#checkers', () => {
 
     it('should throw an uri error when percent encoding is malformed', () => {
       expectThrowWithCode(
-        () => checkPercentEncoding('percent%2encoding', 7),
+        () => checkPercentEncoding('percent%2gncoding', 7),
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
@@ -680,6 +680,24 @@ describe('#checkers', () => {
       expectThrowWithCode(() => checkURISyntax('foo://'), 'URI_INVALID_HOST');
     });
 
+    // RFC 6874: an IPv6 zone identifier in a URI MUST use the percent-encoded
+    // "%25" delimiter; a bare "%" is invalid in URI context.
+    it('should require the RFC 6874 %25 zone delimiter in a URI host', () => {
+      expectThrowWithCode(() => checkURISyntax('http://[fe80::1%eth0]/'), 'URI_INVALID_HOST');
+      expectThrowWithCode(() => checkURI('http://[fe80::1%eth0]/'), 'URI_INVALID_HOST');
+      expect(() => checkURI('http://[fe80::1%25eth0]/')).not.toThrow();
+      expect(() => checkWebURL('http://[fe80::1%25eth0]/')).not.toThrow();
+    });
+
+    // RFC 6874 §2: ZoneID = 1*( unreserved / pct-encoded ) — the zone must
+    // be non-empty and restricted to that set after the %25 delimiter.
+    it('should reject an empty or malformed RFC 6874 ZoneID in a URI host', () => {
+      expectThrowWithCode(() => checkURISyntax('http://[fe80::1%25]/'), 'URI_INVALID_HOST');
+      expectThrowWithCode(() => checkURI('http://[fe80::1%25]/'), 'URI_INVALID_HOST');
+      expectThrowWithCode(() => checkURI('http://[fe80::1%25e*0]/'), 'URI_INVALID_HOST');
+      expect(() => checkURI('http://[fe80::1%251]/')).not.toThrow();
+    });
+
     it('should not throw if an uri has at least a scheme and a path', () => {
       expect(() => checkURISyntax('http://example.com')).not.toThrow();
       expect(() => checkURISyntax('http://example.com/path')).not.toThrow();
@@ -813,7 +831,7 @@ describe('#checkers', () => {
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
-        () => checkURI('foo://user:%acpass@example.com:8042/over/there?name=ferret#nose'),
+        () => checkURI('foo://user:%agpass@example.com:8042/over/there?name=ferret#nose'),
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
@@ -900,6 +918,17 @@ describe('#checkers', () => {
       );
     });
 
+    // RFC-3986 §3.2.3: port = *DIGIT. JS Number() coerces 0x1F/1e3/0o17 to a
+    // finite number; a compliant validator MUST still reject them as ports.
+    it('should reject Number()-coercible non-digit ports (RFC-3986 §3.2.3)', () => {
+      for (const bad of ['0x1F', '1e3', '0o17', '0b11']) {
+        expectThrowWithCode(
+          () => checkURI(`foo://example.com:${bad}/over/there?name=ferret#nose`),
+          'URI_INVALID_PORT',
+        );
+      }
+    });
+
     it('should throw an uri error when port is out of range', () => {
       expectThrowWithCode(
         () => checkURI(`foo://example.com:${minPortInteger - 1}/over/there?name=ferret#nose`),
@@ -918,6 +947,13 @@ describe('#checkers', () => {
       expect(() =>
         checkURI(`foo://example.com:${maxPortInteger}/over/there?name=ferret#nose`),
       ).not.toThrow();
+    });
+
+    // RFC-3986 §2.1 / §6.2.2.1: %3a and %3A are equivalent. checkURI MUST NOT
+    // reject a URI solely because its percent-encodings use lowercase hex.
+    it('should accept lowercase hex percent-encodings (RFC-3986 §6.2.2.1)', () => {
+      expect(() => checkURI('foo://example.com:8042/%c3%bcber/%2f?a=%3a#%7e')).not.toThrow();
+      expect(() => checkURI('foo://example.com/%3a%2f%3f')).not.toThrow();
     });
 
     it('should throw an uri error if path has invalid characters', () => {
@@ -1059,11 +1095,11 @@ describe('#checkers', () => {
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
-        () => checkURI('foo://example.com:8042/over/there%Aa?name=ferret#nose'),
+        () => checkURI('foo://example.com:8042/over/there%Ag?name=ferret#nose'),
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
-        () => checkURI('foo://example.com:8042/%2cover/there%20%20?name=ferret#nose'),
+        () => checkURI('foo://example.com:8042/%2gover/there%20%20?name=ferret#nose'),
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
@@ -1095,11 +1131,11 @@ describe('#checkers', () => {
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
-        () => checkURI('foo://example.com:8042/over/there?name=ferret#nose%ef'),
+        () => checkURI('foo://example.com:8042/over/there?name=ferret#nose%eg'),
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
-        () => checkURI('foo://example.com:8042/over/there?name=ferret#nose%ac'),
+        () => checkURI('foo://example.com:8042/over/there?name=ferret#nose%ag'),
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
@@ -1107,11 +1143,11 @@ describe('#checkers', () => {
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
-        () => checkURI('foo://example.com:8042/over/there?name=ferret#nose%8c'),
+        () => checkURI('foo://example.com:8042/over/there?name=ferret#nose%8g'),
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
-        () => checkURI('foo://example.com:8042/over/there?name=ferret#nose%a9'),
+        () => checkURI('foo://example.com:8042/over/there?name=ferret#nose%az'),
         'URI_INVALID_PERCENT_ENCODING',
       );
     });
@@ -1301,7 +1337,7 @@ describe('#checkers', () => {
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
-        () => checkHttpURL('http://user:%acpass@example.com:8042/over/there?name=ferret#nose'),
+        () => checkHttpURL('http://user:%agpass@example.com:8042/over/there?name=ferret#nose'),
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
@@ -1546,11 +1582,11 @@ describe('#checkers', () => {
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
-        () => checkHttpURL('http://example.com:8042/over/there%Aa?name=ferret#nose'),
+        () => checkHttpURL('http://example.com:8042/over/there%Ag?name=ferret#nose'),
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
-        () => checkHttpURL('http://example.com:8042/%2cover/there%20%20?name=ferret#nose'),
+        () => checkHttpURL('http://example.com:8042/%2gover/there%20%20?name=ferret#nose'),
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
@@ -1582,11 +1618,11 @@ describe('#checkers', () => {
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
-        () => checkHttpURL('http://example.com:8042/over/there?name=ferret#nose%ef'),
+        () => checkHttpURL('http://example.com:8042/over/there?name=ferret#nose%eg'),
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
-        () => checkHttpURL('http://example.com:8042/over/there?name=ferret#nose%ac'),
+        () => checkHttpURL('http://example.com:8042/over/there?name=ferret#nose%ag'),
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
@@ -1594,11 +1630,11 @@ describe('#checkers', () => {
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
-        () => checkHttpURL('http://example.com:8042/over/there?name=ferret#nose%8c'),
+        () => checkHttpURL('http://example.com:8042/over/there?name=ferret#nose%8g'),
         'URI_INVALID_PERCENT_ENCODING',
       );
       expectThrowWithCode(
-        () => checkHttpURL('http://example.com:8042/over/there?name=ferret#nose%a9'),
+        () => checkHttpURL('http://example.com:8042/over/there?name=ferret#nose%az'),
         'URI_INVALID_PERCENT_ENCODING',
       );
     });
@@ -2265,6 +2301,16 @@ describe('#checkers', () => {
           ),
         'URI_MAX_LENGTH_URL',
       );
+    });
+
+    // sitemaps.org: a URL must be strictly less than 2,048 characters, so
+    // maxLengthURL (2048) is an exclusive bound — exactly 2048 is rejected.
+    it('should reject a URL of exactly maxLengthURL and accept maxLengthURL - 1', () => {
+      const base = 'http://example.com/';
+      const url = (len: number) => base + 'a'.repeat(len - base.length);
+
+      expectThrowWithCode(() => checkHttpURL(url(maxLengthURL)), 'URI_MAX_LENGTH_URL');
+      expect(() => checkHttpURL(url(maxLengthURL - 1))).not.toThrow();
     });
 
     it('should not throw an uri error when uri is a valid https url when https is true', () => {

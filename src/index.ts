@@ -27,3 +27,4 @@ export {
 export { isIP, isIPv4, isIPv6 } from './ip/index.js';
 export { type ParsedURI, parseURI, recomposeURI, type URIComponents } from './parser/index.js';
 export { punycode, punydecode } from './punycode/index.js';
+export { removeDotSegments, resolveURI } from './resolver/index.js';

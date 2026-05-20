@@ -18,7 +18,8 @@ import {
 import { checkSchemeChars, checkURISyntax } from '../checkers/index.js';
 import { maxLengthURL, maxPortInteger, minPortInteger } from '../config/index.js';
 import { isDomain } from '../domain/index.js';
-import { int } from '../helpers/cast.js';
+import { int, isPort } from '../helpers/cast.js';
+import { fail } from '../helpers/error.js';
 import { exists, is } from '../helpers/object.js';
 import { isIP } from '../ip/index.js';
 import { recomposeURI } from '../parser/index.js';
@@ -45,7 +46,15 @@ import { entities, specialChars } from '../sitemap/index.js';
  */
 const encodeURIComponentString = function encodeURIComponentString(
   component: string,
-  { type, sitemap, lowercase }: { type?: string; sitemap?: boolean; lowercase?: boolean } = {},
+  {
+    type,
+    sitemap,
+    lowercase,
+  }: {
+    type?: string | undefined;
+    sitemap?: boolean | undefined;
+    lowercase?: boolean | undefined;
+  } = {},
 ): string {
   if (!is(String, component)) {
     return '';
@@ -132,7 +141,15 @@ const encodeURIComponentString = function encodeURIComponentString(
  */
 const encodeURIString = function encodeURIString(
   uri: string,
-  { web, sitemap, lowercase }: { web?: boolean; sitemap?: boolean; lowercase?: boolean } = {},
+  {
+    web,
+    sitemap,
+    lowercase,
+  }: {
+    web?: boolean | undefined;
+    sitemap?: boolean | undefined;
+    lowercase?: boolean | undefined;
+  } = {},
 ): string {
   const uriToEncode = is(String, uri) && lowercase === true ? uri.toLowerCase() : uri;
   const webURL = web === true || sitemap === true;
@@ -144,11 +161,7 @@ const encodeURIString = function encodeURIString(
   // scheme must be http or https for web/sitemap or with valid chars, always in lowercase
   if (webURL) {
     if (scheme !== 'http' && scheme !== 'https') {
-      const error = new URIError(`scheme must be http or https, got '${scheme}'`) as URIError & {
-        code: string;
-      };
-      error.code = 'URI_INVALID_SCHEME';
-      throw error;
+      fail('URI_INVALID_SCHEME', `scheme must be http or https, got '${scheme}'`);
     }
   } else {
     // check scheme characters, it is not intended to encode a scheme
@@ -157,27 +170,23 @@ const encodeURIString = function encodeURIString(
 
   // authority is required and must be a valid host for web/sitemap
   if (webURL && !is(String, authority)) {
-    const error = new URIError('authority is required') as URIError & { code: string };
-    error.code = 'URI_MISSING_AUTHORITY';
-    throw error;
+    fail('URI_MISSING_AUTHORITY', 'authority is required');
   }
 
   // check host is a valid ip first (RFC-3986) or a domain name
   if (exists(host) && !isIP(host) && !isDomain(host)) {
-    const error = new URIError(
-      `host must be a valid ip or domain name, got '${host}'`,
-    ) as URIError & { code: string };
-    error.code = 'URI_INVALID_HOST';
-    throw error;
+    fail('URI_INVALID_HOST', `host must be a valid ip or domain name, got '${host}'`);
   }
 
-  // check port is a number if any
-  if (exists(port) && int(port, { ge: minPortInteger, le: maxPortInteger }) === undefined) {
-    const error = new URIError(
+  // check port is a valid RFC-3986 *DIGIT and in range if any
+  if (
+    exists(port) &&
+    (!isPort(port) || int(port, { ge: minPortInteger, le: maxPortInteger }) === undefined)
+  ) {
+    fail(
+      'URI_INVALID_PORT',
       `port must be an integer between ${minPortInteger}-${maxPortInteger}, got '${port}'`,
-    ) as URIError & { code: string };
-    error.code = 'URI_INVALID_PORT';
-    throw error;
+    );
   }
 
   // userinfo
@@ -189,25 +198,23 @@ const encodeURIString = function encodeURIString(
   });
 
   // path
+  /* v8 ignore next -- unreachable '': checkURISyntax always yields a string path */
   const pathEncoded = encodeURIComponentString(path ?? '', {
     sitemap,
     type: 'path',
     lowercase: false,
   });
 
-  // query
-  const queryEncoded = encodeURIComponentString(query ?? '', {
-    sitemap,
-    type: 'query',
-    lowercase: false,
-  });
+  // query — RFC-3986 §5.3: keep an absent query (null) absent; only a
+  // present query (including '') is encoded and re-emitted with '?'
+  const queryEncoded = is(String, query)
+    ? encodeURIComponentString(query, { sitemap, type: 'query', lowercase: false })
+    : query;
 
-  // fragment
-  const fragmentEncoded = encodeURIComponentString(fragment ?? '', {
-    sitemap,
-    type: 'fragment',
-    lowercase: false,
-  });
+  // fragment — same defined/absent distinction (RFC-3986 §5.3)
+  const fragmentEncoded = is(String, fragment)
+    ? encodeURIComponentString(fragment, { sitemap, type: 'fragment', lowercase: false })
+    : fragment;
 
   const uriencoded = recomposeURI({
     scheme,
@@ -219,12 +226,9 @@ const encodeURIString = function encodeURIString(
     fragment: fragmentEncoded,
   });
 
-  if (webURL && uriencoded.length > maxLengthURL) {
-    const error = new URIError(
-      `max URL length of ${maxLengthURL} reached: ${uriencoded.length}`,
-    ) as URIError & { code: string };
-    error.code = 'URI_MAX_LENGTH_URL';
-    throw error;
+  // sitemaps.org: a URL must be strictly less than 2,048 characters
+  if (webURL && uriencoded.length >= maxLengthURL) {
+    fail('URI_MAX_LENGTH_URL', `max URL length of ${maxLengthURL} reached: ${uriencoded.length}`);
   }
 
   return uriencoded;
@@ -262,7 +266,7 @@ const encodeURIString = function encodeURIString(
  */
 const encodeWebURL = function encodeWebURL(
   uri: string,
-  { lowercase }: { lowercase?: boolean } = {},
+  { lowercase }: { lowercase?: boolean | undefined } = {},
 ): string {
   return encodeURIString(uri, { lowercase, web: true });
 };

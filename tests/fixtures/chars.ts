@@ -6,7 +6,9 @@
 export const az = 'abcdefghijklmnopqrstuvwxyz';
 export const AZ = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 export const GZ = 'GHIJKLMNOPQRSTUVWXYZ';
+export const gz = 'ghijklmnopqrstuvwxyz';
 export const hexdig = 'ABCDEF';
+export const hexdigLower = 'abcdef';
 export const digits = '0123456789';
 
 // allowed
@@ -20,7 +22,8 @@ export const sitemapSubDelims = subDelims.replace(/[*']/g, '');
 
 export const allowedSchemeChars = `${az}${digits}+-.`;
 export const allowedDomainChars = `${az}${digits}-`;
-export const allowedPercentEncodingChars = `${digits}${hexdig}`;
+// RFC-3986 §2.1/§6.2.2.1: HEXDIG is case-insensitive (%3a ≡ %3A)
+export const allowedPercentEncodingChars = `${digits}${hexdig}${hexdigLower}`;
 
 export const allowedUserinfoChars = `${unreserved}%${subDelims}:`;
 export const allowedPathChars = `${unreserved}%${subDelims}:@/`;
@@ -42,7 +45,7 @@ export const allowedSitemapQueryOrFragmentCharsToEncode = `${allowedSitemapPathC
 export const disallowed = '\\^`{|}<>';
 export const disallowedSchemeChars = `${AZ}${disallowed}${allowed.replace(/[-+.]/g, '')}`;
 export const disallowedDomainChars = `${AZ}${disallowed}${allowed.replace('-', '')}`;
-export const disallowedPercentEncodingChars = `${az}${GZ}${allowed}${disallowed}`;
+export const disallowedPercentEncodingChars = `${gz}${GZ}${allowed}${disallowed}`;
 
 export const disallowedUserinfoChars = '#/?@[]';
 export const disallowedPathChars = '?#[]';
