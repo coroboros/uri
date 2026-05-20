@@ -95,6 +95,8 @@ encodeWebURL('https://www.中文.com./Over There?a=B#Anchôr');
 - **RFC 1034 / RFC 1123** — domain-name rules: label length, character set, label separation.
 - **sitemaps.org** — the Sitemap protocol: required XML-entity escaping and the 2,048-character URL ceiling.
 
+See [`bench/baseline.md`](bench/baseline.md) for performance numbers vs native `URL` / `URL.canParse`. The toolkit trades raw speed for RFC-3986 fidelity — full per-character validation, IDN handling, RFC 6874 zone identifiers, and explicit coded errors.
+
 **Generic URI syntax**
 
 ![URI Syntax](assets/uri-syntax.png "URI Syntax")
