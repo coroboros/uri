@@ -110,7 +110,7 @@ See [`bench/baseline.md`](bench/baseline.md) for performance numbers vs native `
 ### Types
 
 <details>
-<summary><em>ParsedURI</em></summary>
+<summary><code>ParsedURI</code></summary>
 
 <br>
 
@@ -138,7 +138,7 @@ Fields default to `null` when the corresponding URI part is missing. `port` is a
 </details>
 
 <details>
-<summary><em>URIComponents</em></summary>
+<summary><code>URIComponents</code></summary>
 
 <br>
 
@@ -159,7 +159,7 @@ interface URIComponents {
 </details>
 
 <details>
-<summary><em>CheckedURI</em></summary>
+<summary><code>CheckedURI</code></summary>
 
 <br>
 
@@ -176,7 +176,7 @@ interface CheckedURI extends ParsedURI {
 ### Punycode
 
 <details>
-<summary><em>punycode(domain)</em></summary>
+<summary><code>punycode(domain)</code></summary>
 
 <br>
 
@@ -210,7 +210,7 @@ punycode('127.0.0.1');                            // '127.0.0.1'
 </details>
 
 <details>
-<summary><em>punydecode(domain)</em></summary>
+<summary><code>punydecode(domain)</code></summary>
 
 <br>
 
@@ -244,7 +244,7 @@ punydecode('127.0.0.1');                            // '127.0.0.1'
 ### Parsing
 
 <details>
-<summary><em>parseURI(uri)</em></summary>
+<summary><code>parseURI(uri)</code></summary>
 
 <br>
 
@@ -294,7 +294,7 @@ parseURI('http://user:pass@[fe80::7:8%eth0]:8080');
 </details>
 
 <details>
-<summary><em>recomposeURI(components)</em></summary>
+<summary><code>recomposeURI(components)</code></summary>
 
 <br>
 
@@ -352,7 +352,7 @@ recomposeURI({
 ### Reference resolution
 
 <details>
-<summary><em>resolveURI(base, reference)</em></summary>
+<summary><code>resolveURI(base, reference)</code></summary>
 
 <br>
 
@@ -383,7 +383,7 @@ resolveURI('/not-absolute', 'g');                 // '' — base is not absolute
 </details>
 
 <details>
-<summary><em>removeDotSegments(path)</em></summary>
+<summary><code>removeDotSegments(path)</code></summary>
 
 <br>
 
@@ -409,7 +409,7 @@ removeDotSegments('mid/content=5/../6'); // 'mid/6'
 ### Validators
 
 <details>
-<summary><em>isDomainLabel(label)</em></summary>
+<summary><code>isDomainLabel(label)</code></summary>
 
 <br>
 
@@ -445,7 +445,7 @@ isDomainLabel('la--bel');     // false
 </details>
 
 <details>
-<summary><em>isDomain(name)</em></summary>
+<summary><code>isDomain(name)</code></summary>
 
 <br>
 
@@ -487,7 +487,7 @@ isDomain('xn--\'-6xd.com');      // false — valid Punycode for ॐ, but ॐ is
 </details>
 
 <details>
-<summary><em>isIP(ip)</em></summary>
+<summary><code>isIP(ip)</code></summary>
 
 <br>
 
@@ -513,7 +513,7 @@ isIP('3ffe:b00::1::a');   // false
 </details>
 
 <details>
-<summary><em>isIPv4(ip)</em></summary>
+<summary><code>isIPv4(ip)</code></summary>
 
 <br>
 
@@ -527,7 +527,7 @@ isIPv4('1:2::8');  // false
 </details>
 
 <details>
-<summary><em>isIPv6(ip)</em></summary>
+<summary><code>isIPv6(ip)</code></summary>
 
 <br>
 
@@ -543,7 +543,7 @@ isIPv6('212.58.241.131');                          // false
 ### Checkers
 
 <details>
-<summary><em>checkURI(uri)</em></summary>
+<summary><code>checkURI(uri)</code></summary>
 
 <br>
 
@@ -590,7 +590,7 @@ checkURI('http://www.bar.baz/foo%2');                // throws URIError — URI_
 </details>
 
 <details>
-<summary><em>checkHttpURL(uri)</em></summary>
+<summary><code>checkHttpURL(uri)</code></summary>
 
 <br>
 
@@ -612,7 +612,7 @@ checkHttpURL('http://user:pass@xn--fiq228c.com:8042/over/there?name=ferret#nose'
 </details>
 
 <details>
-<summary><em>checkHttpsURL(uri)</em></summary>
+<summary><code>checkHttpsURL(uri)</code></summary>
 
 <br>
 
@@ -621,7 +621,7 @@ Same as [`checkHttpURL`](#checkers) but `scheme` must be `https` or `HTTPS`.
 </details>
 
 <details>
-<summary><em>checkWebURL(uri)</em></summary>
+<summary><code>checkWebURL(uri)</code></summary>
 
 <br>
 
@@ -630,7 +630,7 @@ Same as [`checkHttpURL`](#checkers) but `scheme` can be `http` / `HTTP` or `http
 </details>
 
 <details>
-<summary><em>checkHttpSitemapURL(uri)</em></summary>
+<summary><code>checkHttpSitemapURL(uri)</code></summary>
 
 <br>
 
@@ -665,7 +665,7 @@ checkHttpSitemapURL('http://user:pass@xn--fiq228c.com:8042/over/there?name=ferre
 </details>
 
 <details>
-<summary><em>checkHttpsSitemapURL(uri)</em></summary>
+<summary><code>checkHttpsSitemapURL(uri)</code></summary>
 
 <br>
 
@@ -674,7 +674,7 @@ Same as [`checkHttpSitemapURL`](#checkers) but `scheme` must be `https`.
 </details>
 
 <details>
-<summary><em>checkSitemapURL(uri)</em></summary>
+<summary><code>checkSitemapURL(uri)</code></summary>
 
 <br>
 
@@ -685,7 +685,7 @@ Same as [`checkHttpSitemapURL`](#checkers) but `scheme` can be `http` or `https`
 ### Encoders
 
 <details>
-<summary><em>encodeURIComponentString(component, options)</em></summary>
+<summary><code>encodeURIComponentString(component, options)</code></summary>
 
 <br>
 
@@ -723,7 +723,7 @@ encodeURIComponentString("A#/?@[]&'*", { type: 'fragment', sitemap: true });
 </details>
 
 <details>
-<summary><em>encodeURIString(uri, options)</em></summary>
+<summary><code>encodeURIString(uri, options)</code></summary>
 
 <br>
 
@@ -763,7 +763,7 @@ encodeURIString('foo://usër:pâss@bar.baz:8080/Ovër There?ù=B&b=c#Anchôr');
 </details>
 
 <details>
-<summary><em>encodeWebURL(uri, options)</em></summary>
+<summary><code>encodeWebURL(uri, options)</code></summary>
 
 <br>
 
@@ -790,7 +790,7 @@ encodeWebURL('http://usër:pâss@bar.baz:8080/Ovër There?ù=B&b=c#Anchôr');
 </details>
 
 <details>
-<summary><em>encodeSitemapURL(uri)</em></summary>
+<summary><code>encodeSitemapURL(uri)</code></summary>
 
 <br>
 
@@ -813,7 +813,7 @@ encodeSitemapURL("http://user:p'âss@bar.baz/it's *ver/there?a=b&b=c#anch*r");
 ### Decoders
 
 <details>
-<summary><em>decodeURIComponentString(component, options)</em></summary>
+<summary><code>decodeURIComponentString(component, options)</code></summary>
 
 <br>
 
@@ -841,7 +841,7 @@ decodeURIComponentString('SITE&amp;maP', { sitemap: true, lowercase: true });
 </details>
 
 <details>
-<summary><em>decodeURIString(uri, options)</em></summary>
+<summary><code>decodeURIString(uri, options)</code></summary>
 
 <br>
 
@@ -880,7 +880,7 @@ decodeURIString('foo://us%C3%ABr:p%C3%A2ss@bar.baz:8080/Ov%C3%ABr%20There?%C3%B9
 </details>
 
 <details>
-<summary><em>decodeWebURL(uri, options)</em></summary>
+<summary><code>decodeWebURL(uri, options)</code></summary>
 
 <br>
 
@@ -902,7 +902,7 @@ decodeWebURL('HTTPS://WWW.xn--fiq228c.COM./Over/There?a=B&b=c#Anchor');
 </details>
 
 <details>
-<summary><em>decodeSitemapURL(uri, options)</em></summary>
+<summary><code>decodeSitemapURL(uri, options)</code></summary>
 
 <br>
 
@@ -936,7 +936,7 @@ Errors emitted by `@coroboros/uri` are native `URIError` instances with an addit
 The `code` field is a stable string discriminant safe for runtime branching.
 
 <details>
-<summary><em>Error codes</em></summary>
+<summary><code>Error codes</code></summary>
 
 <br>
 
