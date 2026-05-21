@@ -27,6 +27,7 @@ Parses URIs per **RFC-3986 Appendix B**. Recomposes per §5.3. Resolves referenc
 - [API](#api)
 - [Errors](#errors)
 - [Limitations](#limitations)
+- [Compared to alternatives](#compared-to-alternatives)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -974,6 +975,23 @@ The `code` field is a stable string discriminant safe for runtime branching.
 - This is a strict **RFC-3986** toolkit, not a WHATWG URL parser — it does not apply WHATWG host/IPv4 leniency.
 - IPv6 addresses are not canonicalized to **RFC 5952** form.
 - The `lowercase` option lowercases the entire input including path, query, and fragment, which are case-sensitive per **RFC-3986 §6.2.2.1**. Use `lowercase` for Sitemap or convenience, not as RFC normalization. By default only scheme and host are lowercased, which is the RFC-compliant behavior.
+
+## Compared to alternatives
+
+| Feature                                             | Node `URL` (WHATWG) |    `uri-js`     |  `whatwg-url`   |   `url-parse`   | **`@coroboros/uri`** |
+| --------------------------------------------------- | :-----------------: | :-------------: | :-------------: | :-------------: | :------------------: |
+| Strict RFC-3986 parse                               | no (WHATWG)         | yes             | no (WHATWG)     | no (custom)     | yes                  |
+| Reference resolution (§5.2)                         | yes                 | yes             | yes             | yes (`baseURL`) | yes                  |
+| Explicit recompose API                              | via `toString`      | yes             | yes             | via `toString`  | yes                  |
+| Punycode / IDN (RFC-3987)                           | yes                 | yes             | yes (via `tr46`)| no              | yes                  |
+| IPv6 zone identifiers (RFC 6874 `%25`)              | yes                 | yes             | unknown         | no              | yes                  |
+| Standalone IP validators (`isIP`, `isIPv4`, `isIPv6`)| no                 | no              | no              | no              | yes                  |
+| Standalone domain validators (RFC 1034/1123)        | no                  | no              | no              | no              | yes                  |
+| Sitemap validation (XML escape + 2,048 cap)         | no                  | no              | no              | no              | yes                  |
+| Coded error class                                   | `TypeError`         | generic `Error` | returns `null`  | generic `Error` | yes                  |
+| Zero runtime dependencies                           | yes (built-in)      | no (1)          | no (3)          | no (2)          | yes                  |
+
+The differentiator is validation and Sitemap handling on top of strict RFC-3986 semantics. Node's `URL` follows WHATWG, which is fine for the browser but diverges from RFC-3986 on percent-encoding and scheme-relative references, and ships no validators. `uri-js` parses and serializes per RFC-3986 strictly, then stops at the parse layer; the IP, domain, HTTP(S), and Sitemap validators are absent. The error class is generic, and the install pulls `punycode`. `whatwg-url` and `url-parse` solve adjacent problems (WHATWG conformance, generic parsing). `@coroboros/uri` covers the three RFC-3986 operations (parse, recompose, resolve), Punycode IDN, RFC 6874 zone IDs, IP/domain validators, HTTP(S) guards, and Sitemap checks. Every failure flows through a `URIError` class with a stable `code`, zero deps.
 
 ## Contributing
 
