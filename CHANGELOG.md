@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.0.3 - 21/05/2026
+
+### Documentation
+- `uri` — add Compared to alternatives section (#13)
+
+
 ## v1.0.2 - 20/05/2026
 
 ### Documentation

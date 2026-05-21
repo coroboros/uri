@@ -1,6 +1,6 @@
 {
   "name": "@coroboros/uri",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "RFC-3986 URI toolkit for Node.js. IDN (RFC-3987), IPv6 zone identifiers (RFC 6874), Sitemap protocol. Zero dependencies.",
   "type": "module",
   "sideEffects": false,
