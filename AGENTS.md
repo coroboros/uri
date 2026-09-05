@@ -1,56 +1,20 @@
 # @coroboros/uri
 
-RFC-3986 URI toolkit: parse and recompose URIs, Punycode encode/decode domains, validate IPs, domains, URIs, HTTP(S) and Sitemap URLs, and encode/decode URI strings and components.
+RFC-3986 URI parsing, resolution, validation and encoding for Node.js 22+, including IDN and Sitemap support.
 
-Keep public artifacts free of private rule paths, local machine paths, and internal tooling.
+## Project constraints
 
-## Tech Stack
+- `README.md` documents the standards and API; `src/index.ts` owns exports. Preserve published signatures, error codes and types. Any approved break requires a major version and an explicit migration description.
+- Preserve RFC-3986 resolution semantics in `src/resolver/`; do not substitute WHATWG URL behavior. Punycode uses `node:url`.
+- Keep zero runtime dependencies; additions require user approval. Use native `fetch` where needed.
+- Preserve the public scoped package and dual ESM/CJS exports. Keep public artifacts free of private paths and infrastructure references.
 
-- TypeScript strict, ES modules + CJS dual build (tsdown)
-- Vitest + `fast-check` for property tests, Biome for lint/format
-- `mitata` for benchmarks (`pnpm bench`)
-- Node.js 22 LTS
-- Zero runtime dependencies — Punycode uses Node's `node:url` (`domainToASCII` / `domainToUnicode`)
+## Validation
 
-## Commands
+Use the scripts in `package.json`. Source or dependency changes require `pnpm lint`, `pnpm typecheck`, `pnpm test` and `pnpm build`; use `pnpm test:coverage` when coverage is affected. Documentation-only edits need Markdown and reference checks.
 
-- `pnpm build` — bundle ESM + CJS + types to `dist/`
-- `pnpm test` — run the Vitest suite (incl. property-based)
-- `pnpm test:coverage` — Vitest with the 100% coverage gate
-- `pnpm lint` / `pnpm lint:fix` — Biome check
-- `pnpm typecheck` — tsc --noEmit
-- `pnpm bench` — build then run `bench/uri.bench.mjs`
-- `pnpm dev` — tsdown watch mode
+For parser, encoder or decoder changes, run `pnpm bench` against the bucket budgets in `bench/baseline.md`. Reuse passing results while the tested inputs remain unchanged.
 
-## Important Files
+## Release
 
-- `src/index.ts` — public entry point; all exports surface through here
-- `src/parser/index.ts` — `parseURI`, `recomposeURI`, `hostToURI` (RFC-3986 Appendix B grammar)
-- `src/checkers/index.ts` — URI / URL / Sitemap validators, error taxonomy
-- `src/encoders/index.ts`, `src/decoders/index.ts` — RFC-3986 encode/decode
-- `src/resolver/index.ts` — `resolveURI`, `removeDotSegments` (RFC-3986 §5.2 verbatim)
-- `src/helpers/object.ts` — private `exists` / `is` type guards (inlined, not exported)
-- `tsdown.config.ts` — dual build config (ESM + CJS + dts)
-- `tests/` — one spec per source module + `uri.property.test.ts` for `fast-check` invariants
-- `bench/uri.bench.mjs` — mitata bench vs native `URL` / `URL.canParse`; `bench/baseline.md` documents the 1.0.0 numbers
-
-## Public API (1.0.0 contract)
-
-- `punycode(domain)`, `punydecode(domain)` — domain ASCII/Unicode serialization
-- `parseURI(uri)`, `recomposeURI(components)` — RFC-3986 parse / recompose
-- `resolveURI(base, reference)`, `removeDotSegments(path)` — RFC-3986 §5.2 reference resolution
-- `isDomainLabel(label)`, `isDomain(name)`, `isIP(ip)`, `isIPv4(ip)`, `isIPv6(ip)` — validators
-- `checkURI(uri)`, `checkHttpURL(uri)`, `checkHttpsURL(uri)`, `checkWebURL(uri)`, `checkSitemapURL(uri)`, `checkHttpSitemapURL(uri)`, `checkHttpsSitemapURL(uri)` — throw a coded error on invalid input
-- `encodeURIComponentString(component, options)`, `encodeURIString(uri, options)`, `encodeWebURL(uri, options)`, `encodeSitemapURL(uri)` — RFC-3986 encoders
-- `decodeURIComponentString(component, options)`, `decodeURIString(uri, options)`, `decodeWebURL(uri, options)`, `decodeSitemapURL(uri, options)` — RFC-3986 decoders
-
-## Rules
-
-- The published `1.0.0` tag is the public contract. Never break its signatures, error codes, or type shapes without a major bump; enumerate every break in the PR.
-- **NEVER** add a new runtime dependency without user approval. Zero-dependency is a feature.
-- **NEVER** use `axios`, `request`, or `node-fetch` — use native `fetch` (Node 22+).
-- Run `pnpm lint && pnpm typecheck && pnpm test` before every commit.
-- Run `pnpm bench` against `bench/baseline.md` when touching the parser, encoders or decoders — no regression > 10 % on any bucket at fixed feature set.
-- Scoped package — `publishConfig.access = "public"` is mandatory, do not remove.
-- **Publish** — CI-owned via OIDC Trusted Publisher + npm provenance. `ci.yml` forwards no npm token; never re-add one. Manual `pnpm publish` is forbidden — it bypasses provenance and the tag guard.
-- **Git** — `main`-only; branch → PR → squash-merge → tag the merge commit. The tag is the only manual step; release automation (version bump, `CHANGELOG.md`, npm publish, GitHub release) is owned by [`coroboros/ci`](https://github.com/coroboros/ci). Never hand-edit `package.json` version or `CHANGELOG.md`. Run `pnpm lint && pnpm typecheck && pnpm test && pnpm build` before tagging.
+Target `main` through a PR and squash-merge the reviewed head. After release approval, tag the merge commit with the next SemVer. `.github/workflows/ci.yml` delegates version updates, changelog, npm publication and GitHub release to the shared package pipeline; leave those generated artifacts to CI. Publishing uses OIDC with provenance; do not add an npm token or publish locally.
