@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.0.4 - 05/09/2026
+
+### Fixes
+- patch development dependencies and share project instructions
+
+
 ## v1.0.3 - 21/05/2026
 
 ### Documentation
