@@ -7,11 +7,11 @@ RFC-3986 URI parsing, resolution, validation and encoding for Node.js 22+, inclu
 - `README.md` documents the standards and API; `src/index.ts` owns exports. Preserve published signatures, error codes and types. Any approved break requires a major version and an explicit migration description.
 - Preserve RFC-3986 resolution semantics in `src/resolver/`; do not substitute WHATWG URL behavior. Punycode uses `node:url`.
 - Keep zero runtime dependencies; additions require user approval. Use native `fetch` where needed.
-- Preserve the public scoped package and dual ESM/CJS exports. Keep public artifacts free of private paths and infrastructure references.
+- Preserve the public scoped package and dual ESM/CJS exports.
 
 ## Validation
 
-Use the scripts in `package.json`. Source or dependency changes require `pnpm lint`, `pnpm typecheck`, `pnpm test` and `pnpm build`; use `pnpm test:coverage` when coverage is affected. Documentation-only edits need Markdown and reference checks.
+Source or dependency changes require `pnpm lint`, `pnpm typecheck`, `pnpm test` and `pnpm build`; use `pnpm test:coverage` when coverage is affected.
 
 For parser, encoder or decoder changes, run `pnpm bench` against the bucket budgets in `bench/baseline.md`. Reuse passing results while the tested inputs remain unchanged.
 
